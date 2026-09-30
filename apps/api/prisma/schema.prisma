@@ -1,0 +1,1412 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. ORGANIZATIONS & DEPARTMENTS
+// ==========================================
+
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  code        String       @unique
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  departments Department[]
+  users       User[]
+  scanners    Scanner[]
+  scannerAgents ScannerAgent[]
+  pairingTokens PairingToken[]
+  documents   Document[]
+  retentionPolicies DocumentRetentionPolicy[]
+  savedSearches SavedSearch[]
+  webhookEndpoints WebhookEndpoint[]
+  integrations Integration[]
+  automationRules AutomationRule[]
+
+  @@map("organizations")
+}
+
+model Department {
+  id             String        @id @default(uuid())
+  organizationId String
+  name           String
+  code           String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          User[]
+  scanners       Scanner[]
+  scannerAgents  ScannerAgent[]
+  scanProfiles   ScanProfile[]
+  documents      Document[]
+  pairingTokens  PairingToken[]
+  retentionPolicies DocumentRetentionPolicy[]
+  savedSearches  SavedSearch[]
+  workflowInstances WorkflowInstance[]
+  webhookEndpoints WebhookEndpoint[]
+  automationRules AutomationRule[]
+
+  @@unique([organizationId, code])
+  @@map("departments")
+}
+
+// ==========================================
+// 2. USERS, ROLES & RBAC
+// ==========================================
+
+model User {
+  id             String        @id @default(uuid())
+  organizationId String
+  departmentId   String?
+  email          String        @unique
+  passwordHash   String
+  fullName       String
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department     Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  userRoles      UserRole[]
+  scanBatches    ScanBatch[]
+  createdProfiles ScanProfile[]
+  createdDocuments Document[]  @relation("DocumentCreatedBy")
+  accessLogs     DocumentAccessLog[]
+  auditLogs      DocumentAuditLog[]
+  refreshTokens  RefreshToken[]
+  createdPairingTokens PairingToken[]
+  savedSearches  SavedSearch[]
+  workflowInstancesInitiated WorkflowInstance[]
+  workflowTransitions WorkflowTransition[]
+  assignedTasks  WorkflowTask[] @relation("AssignedTasks")
+  completedTasks WorkflowTask[] @relation("CompletedTasks")
+  notificationEvents NotificationEvent[]
+  bulkOperations BulkOperation[]
+  createdVersions DocumentVersion[]
+  vaultAuthorizations        VaultAuthorization[] @relation("VaultUser")
+  grantedVaultAuthorizations VaultAuthorization[] @relation("VaultGrantedBy")
+  ownedVaultDocuments        VaultDocument[]      @relation("VaultDocOwner")
+  vaultSessions              VaultAccessSession[]
+  vaultAuditLogs             VaultAuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  userRoles   UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  familyId  String?
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// ==========================================
+// 3. SCANNER AGENTS & HARDWARE
+// ==========================================
+
+enum AgentStatus {
+  PENDING_APPROVAL
+  ONLINE
+  OFFLINE
+  REVOKED
+}
+
+model PairingToken {
+  id             String       @id @default(uuid())
+  tokenHash      String       @unique
+  organizationId String
+  departmentId   String?
+  createdById    String
+  isUsed         Boolean      @default(false)
+  usedAt         DateTime?
+  usedByAgentId  String?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department     Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy      User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([isUsed])
+  @@map("pairing_tokens")
+}
+
+model ScannerAgent {
+  id             String           @id @default(uuid())
+  organizationId String?
+  departmentId   String?
+  agentName      String
+  machineName    String
+  osVersion      String
+  ipAddress      String?
+  status         AgentStatus      @default(PENDING_APPROVAL)
+  lastHeartbeat  DateTime?
+  version        String?
+  metadata       Json?            // Optional diagnostic telemetry
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  department     Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  credentials    AgentCredential[]
+  scanners       Scanner[]
+  scanJobs       ScanJob[]
+
+  @@map("scanner_agents")
+}
+
+model AgentCredential {
+  id            String       @id @default(uuid())
+  agentId       String
+  keyIdentifier String       @unique
+  secretHash    String
+  isActive      Boolean      @default(true)
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+  lastUsedAt    DateTime?
+  createdAt     DateTime     @default(now())
+
+  agent         ScannerAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([keyIdentifier])
+  @@map("agent_credentials")
+}
+
+enum ScannerStatus {
+  READY
+  BUSY
+  OFFLINE
+  ERROR
+}
+
+enum DriverType {
+  TWAIN
+  WIA
+  NETWORK_ESCL
+  CUSTOM
+}
+
+model Scanner {
+  id             String        @id @default(uuid())
+  organizationId String
+  departmentId   String?
+  agentId        String
+  localScannerId String        @default("default-scanner") // Driver/provider stable identifier
+  scannerName    String
+  model          String        @default("Brother ADS-4300N")
+  serialNumber   String?
+  driverType     DriverType    @default(TWAIN)
+  status         ScannerStatus @default(OFFLINE)
+  capabilities   Json?         // Dynamically interrogated driver capabilities
+  lastError      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department     Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  agent          ScannerAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  scanJobs       ScanJob[]
+  scanBatches    ScanBatch[]
+
+  @@unique([agentId, driverType, localScannerId])
+  @@map("scanners")
+}
+
+// ==========================================
+// 4. SCAN PROFILES & BATCHES
+// ==========================================
+
+model ScanProfile {
+  id             String       @id @default(uuid())
+  departmentId   String?
+  name           String
+  description    String?
+  isDefault      Boolean      @default(false)
+  settings       Json         // DPI, colorMode, duplex, deskew, blankPageRemoval, separation, ocr
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  department     Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy      User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  scanBatches    ScanBatch[]
+  scanJobs       ScanJob[]
+
+  @@map("scan_profiles")
+}
+
+enum BatchStatus {
+  OPEN
+  PROCESSING
+  QC_PENDING
+  COMPLETED
+  FAILED
+}
+
+model ScanBatch {
+  id             String       @id @default(uuid())
+  scannerId      String
+  profileId      String
+  operatorId     String
+  status         BatchStatus  @default(OPEN)
+  pageCount      Int          @default(0)
+  documentCount  Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  scanner        Scanner      @relation(fields: [scannerId], references: [id], onDelete: Restrict)
+  profile        ScanProfile  @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  operator       User         @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  scanJobs       ScanJob[]
+  documents      Document[]
+
+  @@map("scan_batches")
+}
+
+// ==========================================
+// 5. SCAN JOBS & IDEMPOTENT UPLOADS
+// ==========================================
+
+enum JobStatus {
+  CREATED
+  QUEUED
+  DISPATCHED
+  ACKNOWLEDGED
+  SCANNING
+  LOCAL_COMPLETED
+  UPLOADING
+  QUARANTINED
+  VALIDATING
+  PROCESSING
+  OCR_PROCESSING
+  FINALIZING
+  COMPLETED
+  CANCELLATION_REQUESTED
+  RETRYING
+  FAILED
+  CANCELLED
+}
+
+model ScanJob {
+  id                  String       @id @default(uuid())
+  idempotencyKey      String       @unique
+  batchId             String
+  scannerId           String
+  agentId             String
+  profileId           String
+  status              JobStatus    @default(CREATED)
+  pageCount           Int          @default(0)
+  retryCount          Int          @default(0)
+  maxRetries          Int          @default(3)
+  cancellationReason  String?
+  errorMessage        String?
+  dispatchedAt        DateTime?
+  acknowledgedAt      DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  batch               ScanBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  scanner             Scanner      @relation(fields: [scannerId], references: [id], onDelete: Restrict)
+  agent               ScannerAgent @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  profile             ScanProfile  @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  pages               ScanJobPage[]
+  uploadSessions      StorageUploadSession[]
+  auditLogs           ScanJobAuditLog[]
+
+  @@index([status])
+  @@index([agentId])
+  @@index([scannerId])
+  @@map("scan_jobs")
+}
+
+model ScanJobAuditLog {
+  id         String     @id @default(uuid())
+  jobId      String
+  fromStatus JobStatus?
+  toStatus   JobStatus
+  event      String     // CREATED, DISPATCHED, ACKNOWLEDGED, RETRY_ATTEMPT, FAILED, CANCELLED
+  details    Json?
+  timestamp  DateTime   @default(now())
+
+  job        ScanJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("scan_job_audit_logs")
+}
+
+enum UploadState {
+  CREATED
+  UPLOADING
+  PAUSED
+  RETRYING
+  UPLOADED
+  VERIFYING
+  VERIFIED
+  FAILED
+  EXPIRED
+}
+
+model StorageUploadSession {
+  id             String       @id @default(uuid())
+  jobId          String
+  executionId    String
+  agentId        String
+  pageNumber     Int?
+  totalBytes     Int
+  totalChunks    Int
+  uploadedChunks Int          @default(0)
+  uploadState    UploadState  @default(CREATED)
+  fileHash       String       // SHA-256
+  quarantineKey  String
+  finalKey       String?
+  errorMessage   String?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  job            ScanJob      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, executionId])
+  @@index([uploadState])
+  @@map("storage_upload_sessions")
+}
+
+model ScanJobPage {
+  id             String       @id @default(uuid())
+  jobId          String
+  pageNumber     Int
+  sha256Hash     String
+  storageKey     String
+  thumbnailKey   String?
+  fileSizeBytes  Int
+  isQuarantined  Boolean      @default(true)
+  isValidated    Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  job            ScanJob      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, pageNumber])
+  @@map("scan_job_pages")
+}
+
+// ==========================================
+// 6. DOCUMENTS & ATOMIC STORE
+// ==========================================
+
+enum DocumentStatus {
+  PROCESSING
+  FINALIZING
+  OCR_PROCESSING
+  OCR_COMPLETED
+  DOCUMENT_PROCESSING
+  SEARCHABLE_PDF_GENERATION
+  INDEXING
+  QC_REQUIRED
+  FOR_REVIEW
+  APPROVED
+  COMPLETED
+  REJECTED
+  RESCAN_REQUESTED
+  RETENTION_EXPIRED
+  DELETION_PENDING
+  PURGED
+  FAILED
+  ARCHIVED
+}
+
+model Document {
+  id             String         @id @default(uuid())
+  organizationId String?
+  batchId        String?
+  departmentId   String?
+  jobId          String?
+  executionId    String?
+  scannerId      String?
+  agentId        String?
+  providerType   String?
+  createdById    String?
+  title          String
+  documentType   String         @default("GENERAL")
+  referenceNumber String?
+  invoiceNumber  String?
+  supplierName   String?
+  employeeName   String?
+  storageKeyPdf  String?
+  storageKeyTiff String?
+  pageCount      Int            @default(1)
+  fileSizeBytes  Int            @default(0)
+  sha256Hash     String
+  status         DocumentStatus @default(PROCESSING)
+  isLegalHold    Boolean        @default(false)
+  retentionPolicyId String?
+  retentionDate  DateTime?
+  isPurged       Boolean        @default(false)
+  purgedAt       DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  batch          ScanBatch?     @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  department     Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy      User?          @relation("DocumentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  retentionPolicy DocumentRetentionPolicy? @relation(fields: [retentionPolicyId], references: [id], onDelete: SetNull)
+  pages          DocumentPage[]
+  storageRecords DocumentStorage[]
+  metadata       DocumentMetadata[]
+  ocrResult      DocumentOcrResult?
+  sourceLinks    DocumentLink[] @relation("SourceDocumentLinks")
+  targetLinks    DocumentLink[] @relation("TargetDocumentLinks")
+  accessLogs     DocumentAccessLog[]
+  auditLogs      DocumentAuditLog[]
+  versions       DocumentVersion[]
+  workflowInstances WorkflowInstance[]
+
+  @@unique([jobId, executionId])
+  @@index([documentType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([sha256Hash])
+  @@map("documents")
+}
+
+model DocumentStorage {
+  id             String       @id @default(uuid())
+  documentId     String
+  bucket         String
+  quarantineKey  String
+  storageKey     String
+  fileHash       String
+  byteSize       Int
+  isFinalized    Boolean      @default(false)
+  finalizedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  document       Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_storage")
+}
+
+model DocumentPage {
+  id             String       @id @default(uuid())
+  documentId     String
+  pageNumber     Int
+  storageKey     String
+  thumbnailKey   String?
+  width          Int?
+  height         Int?
+  dpi            Int?
+  deskewAngle    Float?
+  isBlank        Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  document       Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, pageNumber])
+  @@map("document_pages")
+}
+
+model DocumentMetadata {
+  id             String       @id @default(uuid())
+  documentId     String
+  key            String
+  value          String
+  dataType       String       @default("STRING")
+  confidence     Float?
+  isVerified     Boolean      @default(false)
+  extractedBy    String       @default("SYSTEM") // OCR, BARCODE, MANUAL
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  document       Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, key])
+  @@index([documentId, key])
+  @@map("document_metadata")
+}
+
+model DocumentOcrResult {
+  id                  String                  @id @default(uuid())
+  documentId          String                  @unique
+  rawText             String                  @db.Text
+  confidence          Float?
+  avgConfidence       Float?
+  minConfidence       Float?
+  pageCount           Int                     @default(1)
+  lowConfidencePages  Int                     @default(0)
+  language            String                  @default("eng")
+  processingDurationMs Int                    @default(0)
+  hocrData            Json?
+  searchVector        String?                 // Full-text indexing content
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  document            Document                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  pageResults         DocumentPageOcrResult[]
+
+  @@index([confidence])
+  @@map("document_ocr_results")
+}
+
+model DocumentPageOcrResult {
+  id                  String            @id @default(uuid())
+  ocrResultId         String
+  documentId          String
+  pageNumber          Int
+  extractedText       String            @db.Text
+  confidence          Float
+  isLowConfidence     Boolean           @default(false)
+  language            String            @default("eng")
+  processingTimeMs    Int               @default(0)
+  blocks              Json?             // Structured words, lines, bounding boxes
+  diagnostics         Json?
+  createdAt           DateTime          @default(now())
+
+  ocrResult           DocumentOcrResult @relation(fields: [ocrResultId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, pageNumber])
+  @@index([documentId])
+  @@index([confidence])
+  @@index([isLowConfidence])
+  @@map("document_page_ocr_results")
+}
+
+model DocumentLink {
+  id               String       @id @default(uuid())
+  sourceDocumentId String
+  targetDocumentId String
+  relationType     String       // e.g. "INVOICE_TO_PO", "CONTRACT_AMENDMENT"
+  createdAt        DateTime     @default(now())
+
+  sourceDocument   Document     @relation("SourceDocumentLinks", fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  targetDocument   Document     @relation("TargetDocumentLinks", fields: [targetDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceDocumentId, targetDocumentId, relationType])
+  @@map("document_links")
+}
+
+model DocumentAccessLog {
+  id         String       @id @default(uuid())
+  documentId String
+  userId     String?
+  action     String       // VIEW, DOWNLOAD, METADATA_EDIT, EXPORT
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime     @default(now())
+
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("document_access_logs")
+}
+
+model DocumentAuditLog {
+  id         String       @id @default(uuid())
+  documentId String
+  userId     String?
+  action     String       // CREATED, STATUS_CHANGED, DELETED, ARCHIVED
+  details    Json?
+  createdAt  DateTime     @default(now())
+
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("document_audit_logs")
+}
+
+model DocumentRetentionPolicy {
+  id             String       @id @default(uuid())
+  organizationId String?
+  departmentId   String?
+  name           String
+  documentType   String
+  retentionDays  Int          @default(365)
+  retentionYears Int          @default(1)
+  version        Int          @default(1)
+  description    String?
+  actionOnExpiry String       @default("ARCHIVE") // ARCHIVE, SOFT_DELETE, HARD_DELETE
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  department     Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  documents      Document[]
+
+  @@unique([documentType, version])
+  @@map("document_retention_policies")
+}
+
+// ==========================================
+// 7. SYSTEM SETTINGS & NOTIFICATIONS
+// ==========================================
+
+model SystemSetting {
+  id          String       @id @default(uuid())
+  key         String       @unique
+  value       String       @db.Text
+  description String?
+  isPublic    Boolean      @default(false)
+  updatedAt   DateTime     @updatedAt
+
+  @@map("system_settings")
+}
+
+model NotificationLog {
+  id          String       @id @default(uuid())
+  recipient   String
+  type        String       // EMAIL, WEBSOCKET, WEBHOOK
+  title       String
+  content     String       @db.Text
+  status      String       @default("SENT")
+  sentAt      DateTime     @default(now())
+
+  @@map("notification_logs")
+}
+
+// ==========================================
+// 8. DISASTER RECOVERY, INTEGRITY & ALERTS
+// ==========================================
+
+model BackupMetadata {
+  id               String       @id @default(uuid())
+  backupType       String       // FULL_DATABASE, OBJECT_STORAGE_MANIFEST, CONFIG_SNAPSHOT
+  backupPath       String
+  fileSizeBytes    BigInt       @default(0)
+  sha256Hash       String
+  status           String       @default("COMPLETED") // IN_PROGRESS, COMPLETED, FAILED, VERIFIED
+  rpoTimestamp     DateTime     @default(now())
+  isVerified       Boolean      @default(false)
+  verifiedAt       DateTime?
+  verificationLog  String?      @db.Text
+  createdAt        DateTime     @default(now())
+
+  @@index([backupType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("backup_metadata")
+}
+
+model IntegrityVerificationReport {
+  id               String       @id @default(uuid())
+  scannedCount     Int          @default(0)
+  passedCount      Int          @default(0)
+  mismatchCount    Int          @default(0)
+  missingCount     Int          @default(0)
+  details          Json?
+  createdAt        DateTime     @default(now())
+
+  @@map("integrity_verification_reports")
+}
+
+model OperationalAlert {
+  id               String       @id @default(uuid())
+  severity         String       // LOW, MEDIUM, HIGH, CRITICAL
+  alertType        String       // QUEUE_BACKLOG, STALE_AGENT, INTEGRITY_MISMATCH, REPEATED_FAILURE, SECURITY_ABUSE
+  title            String
+  message          String       @db.Text
+  metadata         Json?
+  isResolved       Boolean      @default(false)
+  resolvedAt       DateTime?
+  resolvedById     String?
+  createdAt        DateTime     @default(now())
+
+  @@index([severity])
+  @@index([alertType])
+  @@index([isResolved])
+  @@index([createdAt])
+  @@map("operational_alerts")
+}
+
+// ==========================================
+// 9. PHASE 11: WORKFLOWS, VERSIONING & SAVED SEARCHES
+// ==========================================
+
+model DocumentVersion {
+  id               String       @id @default(uuid())
+  documentId       String
+  versionNumber    Int
+  storageKey       String
+  sha256Hash       String
+  fileSizeBytes    BigInt       @default(0)
+  createdById      String?
+  changeReason     String?
+  sourceAction     String       @default("REVISION") // INITIAL, EDIT, CORRECTION, RESTORE
+  metadataSnapshot Json?
+  createdAt        DateTime     @default(now())
+
+  document         Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy        User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model SavedSearch {
+  id               String       @id @default(uuid())
+  userId           String
+  organizationId   String
+  departmentId     String?
+  name             String
+  description      String?
+  queryPayload     Json
+  isShared         Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department       Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@map("saved_searches")
+}
+
+enum WorkflowStatus {
+  DRAFT
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+model WorkflowInstance {
+  id               String           @id @default(uuid())
+  documentId       String
+  workflowName     String           @default("STANDARD_DOCUMENT_APPROVAL")
+  currentState     String           @default("REVIEW_REQUIRED")
+  status           WorkflowStatus   @default(IN_PROGRESS)
+  initiatedById    String
+  departmentId     String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  document         Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  initiatedBy      User             @relation(fields: [initiatedById], references: [id], onDelete: Cascade)
+  department       Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  tasks            WorkflowTask[]
+  transitions      WorkflowTransition[]
+
+  @@index([documentId])
+  @@index([status])
+  @@map("workflow_instances")
+}
+
+model WorkflowTransition {
+  id                 String           @id @default(uuid())
+  workflowInstanceId String
+  fromState          String
+  toState            String
+  action             String
+  performedById      String
+  notes              String?
+  metadata           Json?
+  timestamp          DateTime         @default(now())
+
+  workflowInstance   WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  performedBy        User             @relation(fields: [performedById], references: [id], onDelete: Cascade)
+
+  @@index([workflowInstanceId])
+  @@map("workflow_transitions")
+}
+
+enum TaskStatus {
+  PENDING
+  CLAIMED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+model WorkflowTask {
+  id                 String           @id @default(uuid())
+  workflowInstanceId String
+  taskType           String           // REVIEW, APPROVE, CLASSIFY, RESCAN
+  assignedToUserId   String?
+  assignedToRole     String?          // e.g. QC_REVIEWER, DEPARTMENT_ADMIN
+  status             TaskStatus       @default(PENDING)
+  dueDate            DateTime?
+  isOverdue          Boolean          @default(false)
+  claimedAt          DateTime?
+  completedAt        DateTime?
+  completedById      String?
+  outcomeNotes       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  workflowInstance   WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  assignedToUser     User?            @relation("AssignedTasks", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  completedByUser    User?            @relation("CompletedTasks", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([workflowInstanceId])
+  @@index([assignedToUserId])
+  @@index([status])
+  @@map("workflow_tasks")
+}
+
+model NotificationEvent {
+  id               String       @id @default(uuid())
+  recipientUserId  String
+  eventType        String       // TASK_ASSIGNED, TASK_OVERDUE, DOCUMENT_APPROVED, QC_REQUIRED, RESCAN_REQUESTED
+  title            String
+  message          String       @db.Text
+  metadata         Json?
+  status           String       @default("DELIVERED") // PENDING, DELIVERED, FAILED
+  isRead           Boolean      @default(false)
+  sentAt           DateTime     @default(now())
+
+  recipientUser    User         @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId])
+  @@index([isRead])
+  @@map("notification_events")
+}
+
+model BulkOperation {
+  id               String       @id @default(uuid())
+  operationType    String       // BULK_METADATA, BULK_ASSIGNMENT, BULK_CLASSIFICATION, BULK_RETENTION
+  initiatedById    String
+  totalItems       Int          @default(0)
+  successfulItems  Int          @default(0)
+  failedItems      Int          @default(0)
+  status           String       @default("COMPLETED") // IN_PROGRESS, COMPLETED, FAILED
+  errors           Json?
+  createdAt        DateTime     @default(now())
+
+  initiatedBy      User         @relation(fields: [initiatedById], references: [id], onDelete: Cascade)
+
+  @@map("bulk_operations")
+}
+
+// ==========================================
+// 10. PHASE 12: INTEGRATIONS, WEBHOOKS & AUTOMATION
+// ==========================================
+
+model OutboxEvent {
+  id               String       @id @default(uuid())
+  eventId          String       @unique
+  eventType        String
+  schemaVersion    String       @default("1.0.0")
+  occurredAt       DateTime     @default(now())
+  organizationId   String?
+  departmentId     String?
+  actorId          String?
+  resourceId       String?
+  resourceType     String?
+  correlationId    String?
+  payload          Json
+  status           String       @default("PENDING") // PENDING, PUBLISHED, FAILED
+  retryCount       Int          @default(0)
+  createdAt        DateTime     @default(now())
+  publishedAt      DateTime?
+
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("outbox_events")
+}
+
+model WebhookEndpoint {
+  id               String            @id @default(uuid())
+  organizationId   String
+  departmentId     String?
+  name             String
+  url              String
+  secretHash       String
+  secretEncrypted  String
+  events           String[]          // List of subscribed event types
+  isActive         Boolean           @default(true)
+  retryCount       Int               @default(0)
+  maxRetries       Int               @default(5)
+  timeoutMs        Int               @default(10000)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department       Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  deliveries       WebhookDelivery[]
+
+  @@index([organizationId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id                String          @id @default(uuid())
+  webhookEndpointId String
+  eventId           String
+  eventType         String
+  statusCode        Int?
+  requestPayload    Json
+  responsePayload   String?         @db.Text
+  status            String          @default("PENDING") // PENDING, SUCCESS, FAILED, DEAD_LETTER
+  attemptCount      Int             @default(1)
+  errorReason       String?
+  durationMs        Int             @default(0)
+  createdAt         DateTime        @default(now())
+
+  webhookEndpoint   WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+
+  @@index([webhookEndpointId])
+  @@index([eventId])
+  @@index([status])
+  @@map("webhook_deliveries")
+}
+
+model NotificationDelivery {
+  id               String       @id @default(uuid())
+  recipient        String
+  provider         String       // EMAIL, WEBHOOK, MOCK
+  eventType        String
+  title            String
+  status           String       @default("QUEUED") // QUEUED, DELIVERED, FAILED, DEAD_LETTER
+  attempts         Int          @default(0)
+  maxAttempts      Int          @default(3)
+  errorReason      String?
+  idempotencyKey   String       @unique
+  deliveredAt      DateTime?
+  createdAt        DateTime     @default(now())
+
+  @@index([eventType])
+  @@index([status])
+  @@map("notification_deliveries")
+}
+
+model Integration {
+  id               String                  @id @default(uuid())
+  organizationId   String
+  name             String
+  type             String                  // EMAIL_SMTP, WEBHOOK, EXTERNAL_API, CUSTOM
+  status           String                  @default("ACTIVE") // ACTIVE, INACTIVE, ERROR
+  description      String?
+  lastUsedAt       DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  credentials      IntegrationCredential[]
+
+  @@index([organizationId])
+  @@map("integrations")
+}
+
+model IntegrationCredential {
+  id               String       @id @default(uuid())
+  integrationId    String
+  keyIdentifier    String       @unique
+  secretEncrypted  String
+  version          Int          @default(1)
+  isActive         Boolean      @default(true)
+  expiresAt        DateTime?
+  rotatedAt        DateTime?
+  createdAt        DateTime     @default(now())
+
+  integration      Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@map("integration_credentials")
+}
+
+model AutomationRule {
+  id               String                @id @default(uuid())
+  organizationId   String
+  departmentId     String?
+  name             String
+  description      String?
+  triggerEvent     String
+  conditions       Json                  // Structured JSON AST for allowlisted operators
+  actions          Json                  // Structured JSON array of actions
+  priority         Int                   @default(100)
+  isEnabled        Boolean               @default(true)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department       Department?           @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  executions       AutomationExecution[]
+
+  @@index([organizationId])
+  @@index([triggerEvent])
+  @@map("automation_rules")
+}
+
+model AutomationExecution {
+  id               String         @id @default(uuid())
+  ruleId           String
+  triggerEventId   String
+  status           String         // SUCCESS, SKIPPED, FAILED
+  executionDetails Json
+  durationMs       Int            @default(0)
+  errorReason      String?
+  createdAt        DateTime       @default(now())
+
+  rule             AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([triggerEventId])
+  @@map("automation_executions")
+}
+
+// ==========================================
+// 11. PHASE 13: HIGH AVAILABILITY & DISASTER RECOVERY
+// ==========================================
+
+model RecoveryDrill {
+  id                     String       @id @default(uuid())
+  name                   String
+  drillType              String       @default("FULL_RECOVERY") // FULL_RECOVERY, DATABASE_ONLY, STORAGE_ONLY, INTEGRITY_AUDIT
+  status                 String       @default("PENDING") // PENDING, RUNNING, SUCCESS, FAILED
+  databaseIntegrityOk    Boolean      @default(false)
+  storageIntegrityOk     Boolean      @default(false)
+  schemaCompatible       Boolean      @default(false)
+  documentsVerifiedCount Int          @default(0)
+  observedRpoMinutes     Int?
+  observedRtoMinutes     Int?
+  durationMs             Int          @default(0)
+  errorReason            String?
+  executedById           String?
+  executedAt             DateTime?
+  createdAt              DateTime     @default(now())
+
+  @@index([status])
+  @@index([drillType])
+  @@map("recovery_drills")
+}
+
+// ==========================================
+// 12. PHASE 16: ENTERPRISE SRE & OPERATIONS
+// ==========================================
+
+model ServiceLevelObjective {
+  id                String           @id @default(uuid())
+  name              String
+  metricName        String           // API_AVAILABILITY, API_LATENCY_P95, SCAN_SUCCESS_RATE, OCR_LATENCY, BACKUP_RPO, DR_RTO, STORAGE_INTEGRITY
+  targetValue       Float            // e.g. 99.9, 200 (ms), 60 (min)
+  warningThreshold  Float
+  criticalThreshold Float
+  windowMinutes     Int              @default(60)
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  measurements      SloMeasurement[]
+
+  @@index([metricName])
+  @@map("service_level_objectives")
+}
+
+model SloMeasurement {
+  id            String                @id @default(uuid())
+  sloId         String
+  observedValue Float
+  status        String                @default("OK") // OK, WARNING, BREACH
+  sampleCount   Int                   @default(1)
+  metadata      Json?
+  createdAt     DateTime              @default(now())
+
+  slo           ServiceLevelObjective @relation(fields: [sloId], references: [id], onDelete: Cascade)
+
+  @@index([sloId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("slo_measurements")
+}
+
+model Incident {
+  id                 String             @id @default(uuid())
+  title              String
+  description        String
+  severity           String             // SEV1, SEV2, SEV3, SEV4
+  status             String             @default("OPEN") // OPEN, INVESTIGATING, MITIGATED, RESOLVED, CLOSED
+  serviceName        String             // API, DATABASE, REDIS, STORAGE, OCR_WORKER, WEBSOCKET
+  ownerId            String?
+  acknowledgedAt     DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  resolutionNotes    String?
+  postIncidentReview String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  timeline           IncidentTimeline[]
+
+  @@index([severity])
+  @@index([status])
+  @@index([serviceName])
+  @@index([createdAt])
+  @@map("incidents")
+}
+
+model IncidentTimeline {
+  id          String   @id @default(uuid())
+  incidentId  String
+  eventType   String   // CREATED, ACKNOWLEDGED, STATUS_CHANGED, SEVERITY_CHANGED, NOTE_ADDED, RESOLVED, CLOSED
+  description String
+  actorId     String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([createdAt])
+  @@map("incident_timeline")
+}
+
+model MaintenanceWindow {
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
+  mode         String    @default("READ_ONLY") // READ_ONLY, FULL_MAINTENANCE
+  isActive     Boolean   @default(false)
+  startsAt     DateTime
+  endsAt       DateTime
+  allowedRoles String[]  @default(["SUPER_ADMIN"])
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([startsAt, endsAt])
+  @@map("maintenance_windows")
+}
+
+model WorkerHeartbeat {
+  id              String   @id @default(uuid())
+  workerId        String   @unique
+  workerType      String   // OCR_WORKER, OUTBOX_WORKER, SWEEPER_WORKER, SCAN_JOB_WORKER
+  hostname        String
+  version         String
+  status          String   @default("IDLE") // IDLE, BUSY, STALE, STOPPED
+  currentJobId    String?
+  queueName       String?
+  lastHeartbeatAt DateTime @default(now())
+  startedAt       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([workerType])
+  @@index([status])
+  @@index([lastHeartbeatAt])
+  @@map("worker_heartbeats")
+}
+
+model ConfigurationVersion {
+  id           String   @id @default(uuid())
+  version      Int
+  category     String   // SYSTEM, OCR, RETENTION, STORAGE, NOTIFICATIONS
+  beforeValues Json
+  afterValues  Json
+  changeReason String
+  checksum     String
+  changedById  String
+  createdAt    DateTime @default(now())
+
+  @@index([category])
+  @@index([version])
+  @@map("configuration_versions")
+}
+
+model ComplianceExport {
+  id             String    @id @default(uuid())
+  exportType     String    // AUDIT_LOGS, SECURITY_EVENTS, INCIDENTS, RETENTION_HISTORY
+  format         String    @default("JSON") // JSON, CSV
+  status         String    @default("PENDING") // PENDING, COMPLETED, FAILED
+  recordCount    Int       @default(0)
+  fileSizeBytes  BigInt    @default(0)
+  sha256Hash     String?
+  storageKey     String?
+  organizationId String?
+  departmentId   String?
+  requestedById  String
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([exportType])
+  @@index([status])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@map("compliance_exports")
+}
+
+// ==========================================
+// 15. PRIVATE VAULT SECURITY MODULE
+// ==========================================
+
+model VaultAuthorization {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  vaultRole      String    @default("VAULT_USER") // SUPER_ADMIN, VAULT_MANAGER, VAULT_USER
+  authorizedById String
+  authorizedAt   DateTime  @default(now())
+  status         String    @default("ACTIVE") // ACTIVE, REVOKED
+  lastAccessAt   DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation("VaultUser", fields: [userId], references: [id], onDelete: Cascade)
+  authorizedBy   User      @relation("VaultGrantedBy", fields: [authorizedById], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("vault_authorizations")
+}
+
+model VaultDocument {
+  id                   String                   @id @default(uuid())
+  title                String
+  folder               String                   @default("/")
+  documentType         String                   @default("EXECUTIVE_CONFIDENTIAL")
+  fileSizeBytes        BigInt                   @default(0)
+  sha256Hash           String
+  storageKey           String
+  encryptionAlgorithm  String                   @default("AES-256-GCM")
+  ownerId              String
+  status               String                   @default("ACTIVE") // ACTIVE, ARCHIVED, PURGED
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  owner                User                     @relation("VaultDocOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  permissions          VaultDocumentPermission[]
+  auditLogs            VaultAuditLog[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([folder])
+  @@map("vault_documents")
+}
+
+model VaultDocumentPermission {
+  id              String        @id @default(uuid())
+  vaultDocumentId String
+  userId          String?
+  vaultRole       String?       // Optional role-based permission
+  canRead         Boolean       @default(true)
+  canPreview      Boolean       @default(true)
+  canDownload     Boolean       @default(true)
+  canEdit         Boolean       @default(false)
+  canDelete       Boolean       @default(false)
+  grantedById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  vaultDocument   VaultDocument @relation(fields: [vaultDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([vaultDocumentId])
+  @@index([userId])
+  @@map("vault_document_permissions")
+}
+
+model VaultAccessSession {
+  id             String    @id @default(uuid())
+  userId         String
+  sessionToken   String    @unique
+  ipAddress      String?
+  userAgent      String?
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime
+  lastActivityAt DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionToken])
+  @@index([isActive])
+  @@map("vault_access_sessions")
+}
+
+model VaultAuditLog {
+  id             String         @id @default(uuid())
+  userId         String?
+  action         String
+  documentId     String?
+  documentTitle  String?
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  result         String         @default("SUCCESS") // SUCCESS, DENIED, FAILED
+  failureReason  String?
+  createdAt      DateTime       @default(now())
+
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  document       VaultDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([documentId])
+  @@index([createdAt])
+  @@map("vault_audit_logs")
+}
+
+

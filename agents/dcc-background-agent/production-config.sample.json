@@ -1,0 +1,13 @@
+{
+  "apiUrl": "https://dcc-server.corporate.local/api/v1",
+  "agentId": "LIAISON-AGENT-01",
+  "agentName": "DCC Liaison Station 01",
+  "authToken": "REPLACE_WITH_SECURE_PRODUCTION_AGENT_TOKEN",
+  "watchFolder": "C:\\DCC\\Incoming",
+  "processedFolder": "C:\\DCC\\Processed",
+  "failedFolder": "C:\\DCC\\Failed",
+  "logFolder": "C:\\DCC\\logs",
+  "pollIntervalMs": 3000,
+  "heartbeatIntervalMs": 10000,
+  "maxRetries": 5
+}

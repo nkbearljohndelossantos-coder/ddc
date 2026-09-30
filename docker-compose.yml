@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. POSTGRESQL DATABASE
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-nkb_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-nkb_secure_db_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-nkb_scanner_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nkb_user} -d ${DB_NAME:-nkb_scanner_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  # ==========================================
+  # 2. REDIS CACHE & QUEUE
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-nkb_redis_secret_2026}"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-nkb_redis_secret_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  # ==========================================
+  # 3. DCC ENTERPRISE WEB & API APPLICATION
+  # ==========================================
+  dcc-app:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${DB_USER:-nkb_user}:${DB_PASSWORD:-nkb_secure_db_pass_2026}@postgres:5432/${DB_NAME:-nkb_scanner_db}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-nkb_redis_secret_2026}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-nkb_redis_secret_2026}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-nkb_super_secret_jwt_access_key_min_32_chars_long_12345}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-nkb_super_secret_jwt_refresh_key_min_32_chars_long_67890}
+      API_URL: https://dcc.nkbmanufacturing.com
+      FRONTEND_URL: https://dcc.nkbmanufacturing.com
+    volumes:
+      - dcc_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4000:4000"
+
+volumes:
+  pgdata:
+  redisdata:
+  dcc_uploads:

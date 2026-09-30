@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. POSTGRESQL HIGH AVAILABILITY
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-dcc_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dcc_secure_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-dcc_production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dcc_admin} -d ${DB_NAME:-dcc_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  # ==========================================
+  # 2. REDIS CLUSTER / REPLICA
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-redis_secure_pass_2026}"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secure_pass_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "6379:6379"
+
+  # ==========================================
+  # 3. S3-COMPATIBLE OBJECT STORAGE (MinIO)
+  # ==========================================
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-dcc_minio_admin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-dcc_minio_secret_2026}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  # ==========================================
+  # 4. API SERVER (INSTANCE 1)
+  # ==========================================
+  api-1:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: always
+    environment:
+      PORT: 3000
+      INSTANCE_ID: api-node-01
+      DATABASE_URL: postgresql://${DB_USER:-dcc_admin}:${DB_PASSWORD:-dcc_secure_pass_2026}@postgres:5432/${DB_NAME:-dcc_production}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_pass_2026}@redis:6379
+      STORAGE_PROVIDER: S3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: dcc-documents
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+
+  # ==========================================
+  # 5. API SERVER (INSTANCE 2)
+  # ==========================================
+  api-2:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: always
+    environment:
+      PORT: 3000
+      INSTANCE_ID: api-node-02
+      DATABASE_URL: postgresql://${DB_USER:-dcc_admin}:${DB_PASSWORD:-dcc_secure_pass_2026}@postgres:5432/${DB_NAME:-dcc_production}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_pass_2026}@redis:6379
+      STORAGE_PROVIDER: S3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: dcc-documents
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3002:3000"
+
+  # ==========================================
+  # 6. ASYNC WORKER (OCR, QUEUES & SCHEDULER)
+  # ==========================================
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: always
+    command: ["node", "apps/api/dist/workers/scheduled.worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER:-dcc_admin}:${DB_PASSWORD:-dcc_secure_pass_2026}@postgres:5432/${DB_NAME:-dcc_production}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_pass_2026}@redis:6379
+      STORAGE_PROVIDER: S3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: dcc-documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

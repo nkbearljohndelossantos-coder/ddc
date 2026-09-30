@@ -1,0 +1,40 @@
+# Node dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*.cert
+
+# Local databases & temp scan caches
+*.db
+*.sqlite
+*.sqlite3
+/storage/
+/temp_scans/
+/quarantine/
+/uploads/
+*.pdf
+*.log
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker-data/
+pg-data/
+redis-data/
+storage-data/

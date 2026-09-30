@@ -1,0 +1,23 @@
+{
+  "name": "@nkb/windows-scanner-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/daemon.js",
+    "dev": "tsx src/daemon.ts",
+    "test": "tsx --test src/**/__tests__/*.test.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "tsx": "^4.15.7",
+    "typescript": "^5.5.2"
+  }
+}

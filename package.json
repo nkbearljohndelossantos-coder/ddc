@@ -1,0 +1,30 @@
+{
+  "name": "nkb-document-capture-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NKB Enterprise Document Scanning & Document Management Platform",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "agents/*"
+  ],
+  "scripts": {
+    "dev:docker": "docker compose -f infrastructure/docker/docker-compose.dev.yml up -d",
+    "dev:api": "npm --workspace=apps/api run dev",
+    "build:api": "npm --workspace=apps/api run build",
+    "prisma:generate": "npm --workspace=apps/api run prisma:generate",
+    "prisma:migrate": "npm --workspace=apps/api run prisma:migrate",
+    "prisma:seed": "npm --workspace=apps/api run prisma:seed"
+  },
+  "keywords": [
+    "document-capture",
+    "scanner-management",
+    "brother-ads4300n",
+    "twain",
+    "wia",
+    "ocr",
+    "enterprise"
+  ],
+  "author": "NKB Enterprise Systems",
+  "license": "UNLICENSED"
+}
