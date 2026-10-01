@@ -19,8 +19,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    ports:
-      - "127.0.0.1:5432:5432"
 
   # ==========================================
   # 2. REDIS CACHE & QUEUE
@@ -37,8 +35,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    ports:
-      - "127.0.0.1:6379:6379"
 
   # ==========================================
   # 3. DCC ENTERPRISE WEB & API APPLICATION
@@ -73,5 +69,8 @@ services:
 
 volumes:
   pgdata:
+    name: dcc_pgdata
   redisdata:
+    name: dcc_redisdata
   dcc_uploads:
+    name: dcc_dcc_uploads
