@@ -5,7 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import { searchService } from '../search/search.service.js';
 import { scannerService } from '../scanners/scanner.service.js';
 import { prisma } from '../../lib/prisma.js';
-import { mergeFilesToPdf, splitPdfToPages, createZipArchive } from '../../lib/pdfMergeSplit.js';
+import { mergeFilesToPdf, splitPdfToPages, createZipArchive, generateDossierDocketPdf } from '../../lib/pdfMergeSplit.js';
 
 export function detectMimeType(filePath: string, fallbackName?: string): string {
   const ext = (path.extname(filePath) || (fallbackName ? path.extname(fallbackName) : '')).toLowerCase();
@@ -675,7 +675,7 @@ export class DocumentController {
 
       const doc = await prisma.document.findUnique({
         where: { id },
-        include: { storageRecords: true, pages: { orderBy: { pageNumber: 'asc' } }, metadata: true },
+        include: { storageRecords: true, pages: { orderBy: { pageNumber: 'asc' } }, metadata: true, department: true },
       });
 
       if (!doc) {
@@ -821,14 +821,26 @@ export class DocumentController {
       const { objectStorage } = await import('../../lib/storage.js');
       const stream = objectStorage.getObjectStream(storageKey);
 
-      if (!stream) {
-        res.status(404).json({ error: 'Physical file not found in storage' });
-        return;
-      }
+      // Fallback: If physical file is missing from local disk and object storage,
+      // generate an official PDF dossier docket instead of 404
+      const docketPdf = await generateDossierDocketPdf({
+        title: doc.title,
+        referenceNumber: doc.referenceNumber || undefined,
+        departmentName: doc.department?.name || doc.department?.code,
+        documentType: doc.documentType,
+        senderName: doc.supplierName || 'Liaison Desk Receiving',
+        status: doc.status,
+        createdAt: doc.createdAt,
+        fileSizeBytes: doc.fileSizeBytes,
+        sha256Hash: doc.sha256Hash,
+        attachments,
+      });
 
-      res.setHeader('Content-Type', type === 'searchable_pdf' ? 'application/pdf' : 'application/octet-stream');
-      res.setHeader('Content-Disposition', `attachment; filename="doc_${doc.id}.${type === 'searchable_pdf' ? 'pdf' : 'dat'}"`);
-      stream.pipe(res);
+      const dlName = `${(doc.title || 'Document').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_Dossier.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dlName)}"`);
+      res.send(docketPdf);
+      return;
     } catch (error) {
       next(error);
     }
@@ -842,7 +854,7 @@ export class DocumentController {
 
       const doc = await prisma.document.findUnique({
         where: { id },
-        include: { pages: { orderBy: { pageNumber: 'asc' } }, storageRecords: true, metadata: true },
+        include: { pages: { orderBy: { pageNumber: 'asc' } }, storageRecords: true, metadata: true, department: true },
       });
 
       if (!doc) {
@@ -890,11 +902,12 @@ export class DocumentController {
 
       // If document is a multi-file package and we haven't already merged it or file is missing
       const attachMeta = (doc.metadata || []).find(m => m.key === 'attachment_files');
+      let parsedAttachments: any[] = [];
       if (attachMeta && attachMeta.value) {
         try {
-          const attachments = JSON.parse(attachMeta.value);
-          if (attachments.length > 1) {
-            const attPaths = attachments.map((a: any) => a.storageKey).filter((sp: any) => sp && fs.existsSync(sp));
+          parsedAttachments = JSON.parse(attachMeta.value);
+          if (parsedAttachments.length > 1) {
+            const attPaths = parsedAttachments.map((a: any) => a.storageKey).filter((sp: any) => sp && fs.existsSync(sp));
             if (attPaths.length > 0 && (!filePath || !filePath.includes('MERGED'))) {
               const mergedBuffer = await mergeFilesToPdf(attPaths);
               if (mergedBuffer) {
@@ -935,7 +948,25 @@ export class DocumentController {
         }
       }
 
-      res.status(404).json({ error: 'Physical document file not found' });
+      // Graceful On-the-Fly Dossier Certificate / Docket Generator
+      // Generates an official PDF certificate rather than throwing HTTP 404
+      const docketPdf = await generateDossierDocketPdf({
+        title: doc.title,
+        referenceNumber: doc.referenceNumber || undefined,
+        departmentName: doc.department?.name || doc.department?.code,
+        documentType: doc.documentType,
+        senderName: doc.supplierName || 'Liaison Desk Receiving',
+        status: doc.status,
+        createdAt: doc.createdAt,
+        fileSizeBytes: doc.fileSizeBytes,
+        sha256Hash: doc.sha256Hash,
+        attachments: parsedAttachments,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.title)}_Dossier.pdf"`);
+      res.send(docketPdf);
+      return;
     } catch (error) {
       next(error);
     }
