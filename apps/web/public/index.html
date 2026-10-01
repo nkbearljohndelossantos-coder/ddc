@@ -948,20 +948,22 @@
       height: 100%;
       min-height: 0;
       overflow: hidden;
-      background: var(--bg-app);
+      background: #F8FAFC;
     }
     .inspect-pane-left {
-      width: 380px;
-      min-width: 320px;
-      max-width: 440px;
+      width: 400px;
+      min-width: 340px;
+      max-width: 460px;
       background: #FFFFFF;
-      border-right: 1px solid var(--card-border);
+      border-right: 1px solid #E2E8F0;
       display: flex;
       flex-direction: column;
       height: 100%;
       overflow-y: auto;
       padding: 1.15rem;
       gap: 1rem;
+      box-shadow: 2px 0 8px rgba(15, 23, 42, 0.03);
+      z-index: 2;
     }
     .inspect-pane-right {
       flex: 1;
@@ -969,35 +971,51 @@
       flex-direction: column;
       min-width: 0;
       height: 100%;
-      background: #F1F5F9;
+      background: #0F172A;
       overflow: hidden;
     }
     .inspect-preview-toolbar {
-      height: 48px;
+      height: 52px;
       background: #FFFFFF;
-      border-bottom: 1px solid var(--card-border);
+      border-bottom: 1px solid #E2E8F0;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 1rem;
+      padding: 0 1.25rem;
       flex-shrink: 0;
-      gap: 0.5rem;
+      gap: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      z-index: 3;
     }
     .inspect-preview-canvas {
       flex: 1;
-      height: calc(100% - 48px);
+      height: calc(100% - 52px);
       min-height: 0;
       position: relative;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      background: #E2E8F0;
+      background: #0F172A;
     }
     .inspect-preview-canvas iframe {
       width: 100%;
       height: 100%;
       border: none;
       background: #FFFFFF;
+    }
+    .attachment-item-card {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      cursor: pointer;
+    }
+    .attachment-item-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+    }
+    .attachment-item-card.is-active {
+      border-color: #2563EB !important;
+      background: #EFF6FF !important;
+      box-shadow: 0 0 0 1px #2563EB, 0 4px 12px rgba(37, 99, 235, 0.12) !important;
     }
     @media (max-width: 900px) {
       .inspect-split-container {
@@ -1009,10 +1027,11 @@
         max-width: none;
         height: auto;
         border-right: none;
-        border-bottom: 1px solid var(--card-border);
+        border-bottom: 1px solid #E2E8F0;
+        box-shadow: none;
       }
       .inspect-pane-right {
-        height: 550px;
+        height: 600px;
         flex: none;
       }
     }
@@ -1535,12 +1554,34 @@
           
           <!-- LEFT PANE: Document Information & Dossier Details -->
           <div class="inspect-pane-left">
-            <!-- Header Section in Left Pane -->
-            <div style="border-bottom: 1px solid var(--card-border-subtle); padding-bottom: 0.75rem;">
-              <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.45rem;">
-                Document Information & Metadata
+            <!-- Top Tab Switcher: Files & Attachments vs Document Details -->
+            <div style="display: flex; background: #F1F5F9; padding: 3px; border-radius: 6px; gap: 3px; border: 1px solid #E2E8F0;">
+              <button type="button" id="tab-btn-inspect-files" onclick="switchLeftInspectTab('files')" style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.75rem; font-weight: 700; border-radius: 4px; border: none; background: #FFFFFF; color: #1E293B; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                Files & Content
+              </button>
+              <button type="button" id="tab-btn-inspect-meta" onclick="switchLeftInspectTab('meta')" style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.75rem; font-weight: 500; border-radius: 4px; border: none; background: transparent; color: #64748B; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Metadata Details
+              </button>
+            </div>
+
+            <!-- Tab Section 1: Attached Files List (Primary Content) -->
+            <div id="inspect-tab-files-pane" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.04em;">
+                  Uploaded Files
+                </div>
+                <span class="badge badge-primary" id="inspect-bundle-count">1 File</span>
               </div>
-              <div class="doc-info-grid" id="inspect-info-grid" style="grid-template-columns: 1fr; gap: 0.5rem; margin-bottom: 0; background: #F8FAFC; padding: 0.75rem; border-radius: 6px;">
+              <div id="inspect-bundle-files-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 480px; overflow-y: auto; padding-right: 2px;">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Tab Section 2: Metadata & History (Accessible via Tab) -->
+            <div id="inspect-tab-meta-pane" style="display: none; flex-direction: column; gap: 0.85rem;">
+              <div class="doc-info-grid" id="inspect-info-grid" style="grid-template-columns: 1fr; gap: 0.5rem; margin-bottom: 0; background: #F8FAFC; padding: 0.85rem; border-radius: 6px; border: 1px solid #E2E8F0;">
                 <div class="doc-info-field">
                   <span class="doc-info-label">Document Number</span>
                   <span class="doc-info-val mono" id="info-doc-num" style="font-weight: 700; color: #2563EB;">-</span>
@@ -1584,35 +1625,22 @@
                   <span class="doc-info-val" id="info-doc-attachment-status" style="font-size: 0.75rem; color: #475569;">-</span>
                 </div>
               </div>
-            </div>
 
-            <!-- Attached Files Section for Bundles (Sama-sama) -->
-            <div id="inspect-bundle-files-wrap" style="display: none; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 0.75rem 0.85rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <div style="font-size: 0.75rem; font-weight: 700; color: #166534; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Mga Kalakip (Sama-sama):
+              <!-- Document Tracking Timeline -->
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 0.75rem 0.85rem;">
+                <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">
+                  Tracking History
                 </div>
-                <span class="badge badge-success" id="inspect-bundle-count">0 Files</span>
-              </div>
-              <div id="inspect-bundle-files-list" style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 220px; overflow-y: auto;">
-              </div>
-            </div>
-
-            <!-- Document Tracking Timeline -->
-            <div style="background: #F8FAFC; border: 1px solid var(--card-border); border-radius: 6px; padding: 0.75rem 0.85rem;">
-              <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">
-                Tracking History
-              </div>
-              <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;" id="inspect-tracking-history">
-                ● Document registered in DCC repository.<br>
-                ● Available for liaison routing.
+                <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;" id="inspect-tracking-history">
+                  ● Document registered in DCC repository.<br>
+                  ● Available for liaison routing.
+                </div>
               </div>
             </div>
 
             <!-- Actions Panel in Left Column -->
-            <div style="margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--card-border-subtle); display: flex; flex-direction: column; gap: 0.5rem;">
-              <button class="btn btn-outline" style="width: 100%; justify-content: center;" onclick="openRouteDocumentModal(inspectedDocState.doc?.id)">
+            <div style="margin-top: auto; padding-top: 0.75rem; border-top: 1px solid #E2E8F0; display: flex; flex-direction: column; gap: 0.5rem;">
+              <button class="btn btn-outline" style="width: 100%; justify-content: center; font-size: 0.8rem; font-weight: 600;" onclick="openRouteDocumentModal(inspectedDocState.doc?.id)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Route Document
               </button>
@@ -1626,26 +1654,22 @@
           <div class="inspect-pane-right">
             <!-- Preview Pane Top Toolbar -->
             <div class="inspect-preview-toolbar">
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 0.825rem; font-weight: 700; color: #1E293B;" id="inspect-preview-heading">Document Preview</span>
-                <span id="inspect-file-type-badge" class="badge badge-neutral" style="font-size: 0.68rem;">-</span>
+              <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;" id="inspect-preview-heading">Document Preview</span>
+                <span id="inspect-file-type-badge" class="badge badge-neutral" style="font-size: 0.68rem; font-weight: 700;">-</span>
               </div>
-              <div style="display: flex; gap: 0.4rem; align-items: center;" id="inspect-preview-tabs">
-                <button type="button" class="btn btn-outline btn-sm" id="btn-tab-preview" onclick="switchInspectTab('preview')" style="font-size: 0.75rem; padding: 0.25rem 0.65rem; background: #EEF2F6; font-weight: 600;">👁 File View</button>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-tab-ocr" onclick="switchInspectTab('ocr')" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">📝 OCR Text</button>
-                <a id="btn-preview-newtab" href="#" target="_blank" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.65rem; display: none;" title="Open file in separate tab">
+              <div style="display: flex; gap: 0.5rem; align-items: center;" id="inspect-preview-tabs">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-tab-preview" onclick="switchInspectTab('preview')" style="font-size: 0.75rem; padding: 0.3rem 0.75rem; background: #EEF2F6; font-weight: 600;">👁 File View</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-tab-ocr" onclick="switchInspectTab('ocr')" style="font-size: 0.75rem; padding: 0.3rem 0.75rem;">📝 OCR Text</button>
+                <a id="btn-preview-newtab" href="#" target="_blank" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 0.3rem 0.75rem; display: none;" title="Open file in separate tab">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   New Tab
                 </a>
               </div>
-              <div style="display: flex; gap: 0.4rem; align-items: center;">
-                <a id="inspect-btn-download-merged" href="#" target="_blank" class="btn btn-primary btn-sm" download style="display: none;" title="I-download ang pinag-isang consolidated PDF">
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <a id="inspect-btn-download-split" href="#" target="_blank" class="btn btn-primary btn-sm" download style="display: none; font-weight: 600;" title="Download all attached files as a ZIP archive">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Merged PDF
-                </a>
-                <a id="inspect-btn-download-split" href="#" target="_blank" class="btn btn-outline btn-sm" download style="display: none; background: #FFFFFF; color: #1E293B;" title="I-download ang hiwa-hiwalay na mga original files (ZIP archive)">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M21 8v13H3V3h13l5 5z"/><path d="M10 3v5h4V3"/><circle cx="12" cy="14" r="2"/></svg>
-                  Split (ZIP)
+                  Download Package (ZIP)
                 </a>
               </div>
             </div>
@@ -2958,6 +2982,45 @@
       }
     }
 
+    function switchLeftInspectTab(tab) {
+      const btnFiles = document.getElementById('tab-btn-inspect-files');
+      const btnMeta = document.getElementById('tab-btn-inspect-meta');
+      const paneFiles = document.getElementById('inspect-tab-files-pane');
+      const paneMeta = document.getElementById('inspect-tab-meta-pane');
+
+      if (tab === 'meta') {
+        if (btnFiles) {
+          btnFiles.style.background = 'transparent';
+          btnFiles.style.color = '#64748B';
+          btnFiles.style.fontWeight = '500';
+          btnFiles.style.boxShadow = 'none';
+        }
+        if (btnMeta) {
+          btnMeta.style.background = '#FFFFFF';
+          btnMeta.style.color = '#1E293B';
+          btnMeta.style.fontWeight = '700';
+          btnMeta.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
+        }
+        if (paneFiles) paneFiles.style.display = 'none';
+        if (paneMeta) paneMeta.style.display = 'flex';
+      } else {
+        if (btnMeta) {
+          btnMeta.style.background = 'transparent';
+          btnMeta.style.color = '#64748B';
+          btnMeta.style.fontWeight = '500';
+          btnMeta.style.boxShadow = 'none';
+        }
+        if (btnFiles) {
+          btnFiles.style.background = '#FFFFFF';
+          btnFiles.style.color = '#1E293B';
+          btnFiles.style.fontWeight = '700';
+          btnFiles.style.boxShadow = '0 1px 2px rgba(0,0,0,0.06)';
+        }
+        if (paneMeta) paneMeta.style.display = 'none';
+        if (paneFiles) paneFiles.style.display = 'flex';
+      }
+    }
+
     function selectAttachmentForPreview(idx) {
       if (!inspectedDocState.doc) return;
       const doc = inspectedDocState.doc;
@@ -2965,41 +3028,28 @@
 
       // Update active highlight classes in left pane
       const items = document.querySelectorAll('.attachment-item-card');
-      items.forEach((el, i) => {
-        if (idx === null) {
-          // Master merged view
-          if (el.getAttribute('data-att-idx') === 'master') {
-            el.style.borderColor = '#2563EB';
-            el.style.background = '#EFF6FF';
-          } else {
-            el.style.borderColor = '#E2E8F0';
-            el.style.background = '#FFFFFF';
-          }
+      items.forEach((el) => {
+        const itemIdx = parseInt(el.getAttribute('data-att-idx'), 10);
+        if (itemIdx === idx) {
+          el.classList.add('is-active');
         } else {
-          if (parseInt(el.getAttribute('data-att-idx'), 10) === idx) {
-            el.style.borderColor = '#16A34A';
-            el.style.background = '#DCFCE7';
-          } else {
-            el.style.borderColor = '#E2E8F0';
-            el.style.background = '#FFFFFF';
-          }
+          el.classList.remove('is-active');
         }
       });
 
       // Switch to preview tab
       switchInspectTab('preview');
 
-      if (idx === null) {
-        // Preview merged/main dossier
+      if (idx === null || !inspectedDocState.attachments || inspectedDocState.attachments.length === 0) {
         const previewHeading = document.getElementById('inspect-preview-heading');
-        if (previewHeading) previewHeading.innerText = `Preview: ${doc.title} (Merged / Master)`;
+        if (previewHeading) previewHeading.innerText = `Document: ${doc.title}`;
         const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&inline=true`;
         loadPreviewStream(previewUrl, doc.title);
       } else {
         const att = inspectedDocState.attachments[idx];
-        const attName = att ? att.name : `Attachment ${idx + 1}`;
+        const attName = att ? att.name : `File ${idx + 1}`;
         const previewHeading = document.getElementById('inspect-preview-heading');
-        if (previewHeading) previewHeading.innerText = `Preview: ${attName}`;
+        if (previewHeading) previewHeading.innerText = `${attName}`;
         const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&attachmentIndex=${idx}&inline=true`;
         loadPreviewStream(previewUrl, attName);
       }
@@ -3063,7 +3113,6 @@
       const ocrWrap = document.getElementById('inspect-ocr-wrapper');
       const ocrPreview = document.getElementById('inspect-ocr-preview');
       const loader = document.getElementById('inspect-img-loading');
-      const btnDownloadMerged = document.getElementById('inspect-btn-download-merged');
       const btnDownloadSplit = document.getElementById('inspect-btn-download-split');
       const btnFullscreen = document.getElementById('btn-inspect-fullscreen');
       const btnNewTab = document.getElementById('btn-preview-newtab');
@@ -3080,7 +3129,6 @@
           <div>Loading document details...</div>
         `;
       }
-      if (btnDownloadMerged) btnDownloadMerged.style.display = 'none';
       if (btnDownloadSplit) btnDownloadSplit.style.display = 'none';
       if (btnFullscreen) btnFullscreen.style.display = 'none';
       if (btnNewTab) btnNewTab.style.display = 'none';
@@ -3136,7 +3184,7 @@
         }
 
         // Bundled attachments
-        const bundleWrap = document.getElementById('inspect-bundle-files-wrap');
+        // Bundled attachments / discrete files
         const bundleList = document.getElementById('inspect-bundle-files-list');
         const bundleCount = document.getElementById('inspect-bundle-count');
         const attachMeta = (doc.metadata || []).find(m => m.key === 'attachment_files');
@@ -3147,44 +3195,48 @@
         inspectedDocState.attachments = attachments;
 
         if (attachments.length > 0) {
-          if (bundleWrap) bundleWrap.style.display = 'block';
-          if (bundleCount) bundleCount.innerText = `${attachments.length} File(s) Sama-sama`;
+          if (bundleCount) bundleCount.innerText = `${attachments.length} ${attachments.length === 1 ? 'File' : 'Files'}`;
           if (bundleList) {
             let listHtml = '';
-            // If multiple files, include Master Consolidated PDF as first option
-            if (attachments.length > 1) {
-              listHtml += `
-                <div class="attachment-item-card" data-att-idx="master" onclick="selectAttachmentForPreview(null)" style="display: flex; justify-content: space-between; align-items: center; background: #EFF6FF; border: 1.5px solid #2563EB; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.15s ease;">
-                  <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0;">
-                    <div style="background: #DBEAFE; color: #1D4ED8; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.72rem; font-weight: 700;">★</div>
-                    <div style="min-width: 0;">
-                      <div style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;">📄 Pinag-isang Buong PDF (Merged)</div>
-                      <div class="mono" style="font-size: 0.7rem; color: #64748B;">Lahat ng kalakip (${attachments.length} files) sa iisang file</div>
-                    </div>
-                  </div>
-                  <div style="display: flex; gap: 0.35rem; align-items: center;">
-                    <span class="badge badge-primary" style="font-size: 0.65rem;">MERGED</span>
-                  </div>
-                </div>
-              `;
-            }
-
-            // Render each uploaded attachment as interactive clickable card
+            // Render each uploaded attachment as a sleek, professional interactive card
             attachments.forEach((att, idx) => {
-              const isSelected = (attachments.length === 1 && idx === 0) || (attachments.length > 1 && false);
+              const isSelected = idx === 0;
+              const nameLower = (att.name || '').toLowerCase();
+              let iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+              let badgeColor = 'badge-primary';
+              let badgeLabel = 'FILE';
+
+              if (nameLower.endsWith('.pdf')) {
+                iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+                badgeColor = 'badge-danger';
+                badgeLabel = 'PDF';
+              } else if (nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg') || nameLower.endsWith('.png') || nameLower.endsWith('.webp')) {
+                iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+                badgeColor = 'badge-success';
+                badgeLabel = 'IMG';
+              } else if (nameLower.endsWith('.txt') || nameLower.endsWith('.csv') || nameLower.endsWith('.json')) {
+                iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>';
+                badgeColor = 'badge-warning';
+                badgeLabel = 'TXT';
+              }
+
               listHtml += `
-                <div class="attachment-item-card" data-att-idx="${idx}" onclick="selectAttachmentForPreview(${idx})" style="display: flex; justify-content: space-between; align-items: center; background: ${isSelected ? '#DCFCE7' : '#FFFFFF'}; border: 1.5px solid ${isSelected ? '#16A34A' : '#E2E8F0'}; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.15s ease;">
-                  <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0;">
-                    <span class="mono" style="font-size: 0.72rem; color: #166534; font-weight: 700; background: #DCFCE7; padding: 2px 6px; border-radius: 4px;">#${idx + 1}</span>
-                    <div style="min-width: 0;">
-                      <div style="font-weight: 600; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;" title="${att.name}">${att.name}</div>
-                      <div class="mono" style="font-size: 0.7rem; color: #64748B;">${((att.size || 0) / 1024).toFixed(1)} KB • I-click para ma-view</div>
+                <div class="attachment-item-card ${isSelected ? 'is-active' : ''}" data-att-idx="${idx}" onclick="selectAttachmentForPreview(${idx})" style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1.5px solid ${isSelected ? '#2563EB' : '#E2E8F0'}; border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.825rem; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
+                  <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; width: 34px; height: 34px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      ${iconSvg}
+                    </div>
+                    <div style="min-width: 0; flex: 1; padding-right: 0.5rem;">
+                      <div style="font-weight: 600; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.835rem;" title="${att.name}">${att.name}</div>
+                      <div class="mono" style="font-size: 0.72rem; color: #64748B; margin-top: 1px;">
+                        ${((att.size || 0) / 1024).toFixed(1)} KB • File #${idx + 1}
+                      </div>
                     </div>
                   </div>
-                  <div style="display: flex; gap: 0.35rem; align-items: center;">
-                    <span class="badge badge-neutral" style="font-size: 0.65rem;">${att.type || 'FILE'}</span>
-                    <a href="${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}" class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.15rem 0.4rem; background: #FFFFFF;" title="Direct download this file" download onclick="event.stopPropagation();">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <div style="display: flex; gap: 0.4rem; align-items: center; flex-shrink: 0;">
+                    <span class="badge ${badgeColor}" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">${badgeLabel}</span>
+                    <a href="${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}" class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.25rem 0.45rem; background: #FFFFFF; border-color: #CBD5E1; color: #475569;" title="Direct download ${att.name}" download onclick="event.stopPropagation();">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </a>
                   </div>
                 </div>
@@ -3193,10 +3245,26 @@
             bundleList.innerHTML = listHtml;
           }
           const infoAttachStatus = document.getElementById('info-doc-attachment-status');
-          if (infoAttachStatus) infoAttachStatus.innerText = `Package (${attachments.length} Files Sama-sama, ${(doc.fileSizeBytes / 1024).toFixed(1)} KB)`;
+          if (infoAttachStatus) infoAttachStatus.innerText = `${attachments.length} Files Attached (${(doc.fileSizeBytes / 1024).toFixed(1)} KB total)`;
         } else {
-          if (bundleWrap) bundleWrap.style.display = 'none';
           const hasFile = doc.fileSizeBytes > 0 || doc.storageKeyPdf || (doc.pages && doc.pages.length > 0);
+          if (bundleList) {
+            bundleList.innerHTML = `
+              <div class="attachment-item-card is-active" data-att-idx="0" onclick="selectAttachmentForPreview(0)" style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1.5px solid #2563EB; border-radius: 8px; padding: 0.65rem 0.85rem; font-size: 0.825rem;">
+                <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
+                  <div style="background: #F8FAFC; border: 1px solid #E2E8F0; width: 34px; height: 34px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  </div>
+                  <div style="min-width: 0;">
+                    <div style="font-weight: 600; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;">${doc.title}</div>
+                    <div class="mono" style="font-size: 0.72rem; color: #64748B;">${hasFile ? ((doc.fileSizeBytes || 0) / 1024).toFixed(1) + ' KB' : 'Record Only'}</div>
+                  </div>
+                </div>
+                <span class="badge badge-primary" style="font-size: 0.65rem;">PRIMARY</span>
+              </div>
+            `;
+          }
+          if (bundleCount) bundleCount.innerText = hasFile ? '1 File' : '0 Files';
           const infoAttachStatus = document.getElementById('info-doc-attachment-status');
           if (infoAttachStatus) {
             infoAttachStatus.innerText = hasFile
@@ -3208,13 +3276,8 @@
         const hasFile = doc.fileSizeBytes > 0 || doc.storageKeyPdf || (doc.pages && doc.pages.length > 0) || (attachments.length > 0);
 
         if (hasFile) {
-          const downloadMergedUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&format=merged`;
           const downloadSplitUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&format=split`;
 
-          if (btnDownloadMerged) {
-            btnDownloadMerged.href = downloadMergedUrl;
-            btnDownloadMerged.style.display = 'inline-flex';
-          }
           if (btnDownloadSplit) {
             if (attachments.length > 1 || (doc.pageCount && doc.pageCount > 1)) {
               btnDownloadSplit.href = downloadSplitUrl;
@@ -3226,17 +3289,13 @@
           if (btnFullscreen) btnFullscreen.style.display = 'inline-flex';
 
           // Choose initial preview target:
-          // If attachments are present, preview the first attachment or master merged view
+          // Directly load the first discrete file into the Viewport pane
           if (attachments.length > 0) {
-            if (attachments.length === 1) {
-              selectAttachmentForPreview(0);
-            } else {
-              selectAttachmentForPreview(null); // Load merged dossier by default
-            }
+            selectAttachmentForPreview(0);
           } else {
             const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&inline=true`;
             const previewHeading = document.getElementById('inspect-preview-heading');
-            if (previewHeading) previewHeading.innerText = `Document Preview: ${doc.title}`;
+            if (previewHeading) previewHeading.innerText = `${doc.title}`;
             loadPreviewStream(previewUrl, doc.title);
           }
         } else {

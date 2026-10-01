@@ -313,22 +313,8 @@ export class DocumentController {
           storageKey: d.storageKey || null,
         }));
 
-        // AUTOMATIC MERGE: If multiple files or documents are provided, merge them into a unified consolidated PDF
-        let finalStorageKeyPdf = documents[0]?.storageKey || `uploads/packages/${bundleHash.slice(0, 12)}_${packageTitle}.pdf`;
-        const candidateFilePaths = documents.map((d: any) => d.storageKey).filter((sp: any) => sp && fs.existsSync(sp));
-        if (candidateFilePaths.length > 0) {
-          try {
-            const mergedPdfBuffer = await mergeFilesToPdf(candidateFilePaths);
-            if (mergedPdfBuffer && mergedPdfBuffer.length > 0) {
-              const safePkgName = packageTitle.replace(/[^a-zA-Z0-9._-]/g, '_');
-              const mergedPdfPath = path.join(uploadPackagesDir, `${bundleHash.slice(0, 12)}_MERGED_${safePkgName}.pdf`);
-              fs.writeFileSync(mergedPdfPath, mergedPdfBuffer);
-              finalStorageKeyPdf = mergedPdfPath;
-            }
-          } catch (mergeErr) {
-            // fallback to documents[0].storageKey
-          }
-        }
+        // Use the primary/first file's storage key as default storageKeyPdf reference
+        let finalStorageKeyPdf = documents[0]?.storageKey || null;
 
         const unifiedDoc = await prisma.document.create({
           data: {
@@ -794,21 +780,20 @@ export class DocumentController {
         }
       }
 
-      // Sub-case C: Download as MERGED PDF (format === 'merged' or default)
+      // Default / Discrete Document Download:
       let storageKey = type === 'searchable_pdf' && doc.storageKeyPdf ? doc.storageKeyPdf : (doc.storageRecords[0]?.storageKey || doc.storageKeyPdf);
 
-      // Check if doc has multiple attachments but no single merged PDF file, create dynamically
-      if ((!storageKey || !fs.existsSync(storageKey)) && attachments.length > 1) {
-        const attPaths = attachments.map(a => a.storageKey).filter(sp => sp && fs.existsSync(sp));
-        if (attPaths.length > 0) {
-          const mergedBuf = await mergeFilesToPdf(attPaths);
-          if (mergedBuf) {
-            const mergedFilename = `${(doc.title || 'Document').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_Merged.pdf`;
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(mergedFilename)}"`);
-            res.send(mergedBuf);
-            return;
-          }
+      // If doc has attachments and no single storageKey, serve the first attachment
+      if ((!storageKey || !fs.existsSync(storageKey)) && attachments.length > 0) {
+        const firstAtt = attachments[0];
+        const firstPath = firstAtt.storageKey || (doc.pages[0] ? doc.pages[0].storageKey : null);
+        if (firstPath && fs.existsSync(firstPath)) {
+          const mimeType = detectMimeType(firstPath, firstAtt.name);
+          const dlName = firstAtt.name || path.basename(firstPath);
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dlName)}"`);
+          fs.createReadStream(firstPath).pipe(res);
+          return;
         }
       }
 
@@ -938,17 +923,16 @@ export class DocumentController {
         }
       }
 
-      // If document is a multi-file package and we haven't already merged it or file is missing
-      if (parsedAttachments.length > 1) {
-        const attPaths = parsedAttachments.map((a: any) => a.storageKey).filter((sp: any) => sp && fs.existsSync(sp));
-        if (attPaths.length > 0 && (!filePath || !filePath.includes('MERGED'))) {
-          const mergedBuffer = await mergeFilesToPdf(attPaths);
-          if (mergedBuffer) {
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.title)}.pdf"`);
-            res.send(mergedBuffer);
-            return;
-          }
+      // If no specific attachment index was requested, but attachments exist, preview the first attachment
+      if (parsedAttachments.length > 0) {
+        const firstAtt = parsedAttachments[0];
+        const candidateFirstPath = firstAtt.storageKey || (doc.pages[0] ? doc.pages[0].storageKey : null);
+        if (candidateFirstPath && fs.existsSync(candidateFirstPath)) {
+          const mimeType = detectMimeType(candidateFirstPath, firstAtt.name);
+          res.setHeader('Content-Type', mimeType);
+          res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(firstAtt.name || path.basename(candidateFirstPath))}"`);
+          fs.createReadStream(candidateFirstPath).pipe(res);
+          return;
         }
       }
 
