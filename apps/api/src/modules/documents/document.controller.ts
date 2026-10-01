@@ -228,8 +228,8 @@ export class DocumentController {
         return;
       }
 
-      if (documents.length > 100) {
-        res.status(400).json({ error: 'Maximum 100 documents allowed per batch' });
+      if (documents.length > 500) {
+        res.status(400).json({ error: 'Maximum 500 documents allowed per batch' });
         return;
       }
 

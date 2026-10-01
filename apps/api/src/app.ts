@@ -64,9 +64,9 @@ export function createApp() {
   });
   app.use('/api/', limiter);
 
-  // 5. Body Parsers
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  // 5. Body Parsers (100MB limit for high-volume scanned PDFs & packages)
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
   // 6. Serve Web Frontend
   app.use('/app', express.static(webPublicDir));
