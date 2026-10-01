@@ -1,4 +1,4 @@
-version: '3.8'
+name: dcc-system
 
 services:
   # ==========================================
@@ -6,6 +6,7 @@ services:
   # ==========================================
   postgres:
     image: postgres:16-alpine
+    container_name: dcc_postgres
     restart: always
     environment:
       POSTGRES_USER: ${DB_USER:-nkb_user}
@@ -26,6 +27,7 @@ services:
   # ==========================================
   redis:
     image: redis:7-alpine
+    container_name: dcc_redis
     restart: always
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-nkb_redis_secret_2026}"]
     volumes:
@@ -45,6 +47,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    container_name: dcc_app
     restart: always
     environment:
       NODE_ENV: production

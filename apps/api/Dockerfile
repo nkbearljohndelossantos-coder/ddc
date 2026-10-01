@@ -5,7 +5,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat python3 make g++ openssl
 
 COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
@@ -28,9 +28,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=4000
 
-RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-eng dumb-init
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-eng dumb-init openssl
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 dccapp
@@ -42,12 +42,12 @@ COPY --from=builder --chown=dccapp:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=dccapp:nodejs /app/apps/api/package*.json ./apps/api/
 COPY --from=builder --chown=dccapp:nodejs /app/package*.json ./
 
-RUN mkdir -p /app/uploads/documents /app/uploads/packages /app/uploads/scans && \
-    chown -R dccapp:nodejs /app/uploads
+RUN mkdir -p /app/uploads/documents /app/uploads/packages /app/uploads/scans /app/.server_object_storage && \
+    chown -R dccapp:nodejs /app
 
 USER dccapp
 
-EXPOSE 3000
+EXPOSE 4000
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["node", "apps/api/dist/server.js"]

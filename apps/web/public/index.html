@@ -2828,6 +2828,7 @@
             } else {
               btnDownloadSplit.style.display = 'none';
             }
+          }
           if (btnFullscreen) btnFullscreen.style.display = 'inline-flex';
           if (btnNewTab) {
             btnNewTab.href = previewUrl;
@@ -3177,14 +3178,26 @@
         loginOverlay.style.display = 'none';
         appLayout.style.display = 'flex';
 
-        const user = auth.user || { fullName: 'Liaison Officer', email: 'liaison@dcc.local' };
-        document.getElementById('current-user-name').innerText = user.fullName || user.email;
-        document.getElementById('current-user-dept').innerText = user.roles ? user.roles[0] : 'Liaison Staff';
-        document.getElementById('header-user-name').innerText = user.fullName || user.email;
-        document.getElementById('header-user-role').innerText = user.roles ? user.roles[0] : 'LIAISON';
+        const user = auth.user || { fullName: 'Liaison Officer', email: 'liaison@dcc.local', roles: ['LIAISON'] };
+        const userRoles = Array.isArray(user.roles) ? user.roles : (user.roles ? [user.roles] : ['LIAISON']);
+        const primaryRole = userRoles[0] || 'LIAISON';
+
+        document.getElementById('current-user-name').innerText = user.fullName || user.email || 'User';
+        document.getElementById('current-user-dept').innerText = user.departmentName || primaryRole;
+        document.getElementById('header-user-name').innerText = user.fullName || user.email || 'User';
+        document.getElementById('header-user-role').innerText = primaryRole;
         
-        renderSidebarNavigation();
-        loadCurrentView();
+        try {
+          renderSidebarNavigation();
+        } catch (e) {
+          console.error('Error rendering sidebar navigation:', e);
+        }
+
+        try {
+          loadCurrentView();
+        } catch (e) {
+          console.error('Error loading current view:', e);
+        }
       }
     }
 
@@ -3194,7 +3207,9 @@
     function navigate(route) {
       currentRoute = route;
       closeMobileSidebar();
-      renderSidebarNavigation();
+      try {
+        renderSidebarNavigation();
+      } catch (e) {}
       loadCurrentView();
     }
 
@@ -5755,13 +5770,18 @@
       }
     }
 
-    // Initialization
-    checkAuth().then(() => {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('action') === 'register' && !auth.user) {
-        openSelfRegModal();
+    // Robust Initialization
+    (async function initApp() {
+      try {
+        await checkAuth();
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'register' && !auth.user) {
+          openSelfRegModal();
+        }
+      } catch (err) {
+        console.error('Initialization error:', err);
       }
-    });
+    })();
   </script>
 </body>
 </html>
