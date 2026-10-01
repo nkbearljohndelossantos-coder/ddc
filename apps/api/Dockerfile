@@ -9,9 +9,11 @@ RUN apk add --no-cache libc6-compat python3 make g++
 
 COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
+COPY apps/web/package*.json ./apps/web/
 COPY agents/windows-scanner-agent/package*.json ./agents/windows-scanner-agent/
+COPY agents/dcc-background-agent/package*.json ./agents/dcc-background-agent/
 
-RUN npm ci
+RUN npm ci --legacy-peer-deps || npm install
 
 COPY . .
 
