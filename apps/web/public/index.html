@@ -2430,6 +2430,23 @@
     // ==========================================
     let selectedUploadFiles = [];
 
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result;
+          if (typeof res === 'string') {
+            const commaIdx = res.indexOf(',');
+            resolve(commaIdx !== -1 ? res.substring(commaIdx + 1) : res);
+          } else {
+            resolve('');
+          }
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
+    }
+
     function handleModalFileSelected(e) {
       const files = Array.from(e.target.files || []);
       const infoLabel = document.getElementById('modal-file-info-label');
@@ -2487,21 +2504,30 @@
 
       // Case 1: Multiple files selected -> Bundle SAMA-SAMA in 1 Document Package
       if (selectedUploadFiles && selectedUploadFiles.length > 1) {
-        btn.innerText = `Pinagsasama ang ${selectedUploadFiles.length} files...`;
+        btn.innerText = `Binabasa at pinagsasama ang ${selectedUploadFiles.length} files...`;
         try {
+          const docPromises = selectedUploadFiles.map(async (f) => {
+            const b64 = await readFileAsBase64(f);
+            return {
+              title: f.name.replace(/\.[^/.]+$/, ''),
+              fileSizeBytes: f.size,
+              pageCount: 1,
+              source: source || direction,
+              recipient: recipient || null,
+              fileData: b64,
+              originalFilename: f.name,
+              contentType: f.type || 'application/octet-stream'
+            };
+          });
+          const processedDocs = await Promise.all(docPromises);
+
           const payload = {
             defaultDepartmentId: dept,
             defaultDocumentType: docType,
             defaultDirection: direction,
             batchTitle: title, // Gamitin ang pamagat na inilagay ng user!
             bundleAsSingleDocument: true, // SAMA-SAMA sa iisang Document Docket!
-            documents: selectedUploadFiles.map(f => ({
-              title: f.name.replace(/\.[^/.]+$/, ''),
-              fileSizeBytes: f.size,
-              pageCount: 1,
-              source: source || direction,
-              recipient: recipient || null,
-            }))
+            documents: processedDocs
           };
 
           const res = await apiFetch('/api/v1/documents/batch', {
@@ -2532,6 +2558,12 @@
       const singleFile = (selectedUploadFiles && selectedUploadFiles.length === 1) ? selectedUploadFiles[0] : null;
 
       try {
+        let singleBase64 = null;
+        if (singleFile) {
+          btn.innerText = 'Uploading file...';
+          singleBase64 = await readFileAsBase64(singleFile);
+        }
+
         const payload = {
           title: title,
           departmentId: dept,
@@ -2539,6 +2571,9 @@
           usePhysicalHardware: false,
           fileSizeBytes: singleFile ? singleFile.size : 0,
           pageCount: singleFile ? 1 : 0,
+          fileData: singleBase64 || undefined,
+          originalFilename: singleFile ? singleFile.name : undefined,
+          contentType: singleFile ? singleFile.type : undefined
         };
 
         const res = await apiFetch('/api/v1/documents', {
@@ -2739,18 +2774,27 @@
       progressText.innerText = `Pinaghahanda ang ${batchUploadQueue.length} files para sa Sama-sama batch ingestion...`;
 
       try {
+        const docPromises = batchUploadQueue.map(async (f) => {
+          const b64 = await readFileAsBase64(f);
+          return {
+            title: f.name.replace(/\.[^/.]+$/, ''),
+            fileSizeBytes: f.size,
+            pageCount: 1,
+            source: direction === 'INCOMING' ? 'Batch Ingest' : 'Internal Release',
+            fileData: b64,
+            originalFilename: f.name,
+            contentType: f.type || 'application/octet-stream'
+          };
+        });
+        const processedBatchDocs = await Promise.all(docPromises);
+
         const payload = {
           defaultDepartmentId: deptId,
           defaultDocumentType: docType,
           defaultDirection: direction,
           batchTitle: finalBatchTitle,
           bundleAsSingleDocument: isBundle, // SAMA-SAMA!
-          documents: batchUploadQueue.map(f => ({
-            title: f.name.replace(/\.[^/.]+$/, ''),
-            fileSizeBytes: f.size,
-            pageCount: 1,
-            source: direction === 'INCOMING' ? 'Batch Ingest' : 'Internal Release',
-          }))
+          documents: processedBatchDocs
         };
 
         progressBar.style.width = '60%';
@@ -2797,8 +2841,169 @@
     let inspectedDocState = {
       doc: null,
       pages: [],
+      attachments: [],
+      currentAttachmentIndex: null, // null means merged/master document
       activeViewType: 'none',
     };
+
+    async function loadPreviewStream(url, fallbackTitle) {
+      const pdfFrame = document.getElementById('inspect-pdf-frame');
+      const imgWrap = document.getElementById('inspect-image-wrapper');
+      const img = document.getElementById('inspect-img-preview');
+      const textWrap = document.getElementById('inspect-text-wrapper');
+      const textPreview = document.getElementById('inspect-text-preview');
+      const loader = document.getElementById('inspect-img-loading');
+      const typeBadge = document.getElementById('inspect-file-type-badge');
+      const btnNewTab = document.getElementById('btn-preview-newtab');
+
+      if (pdfFrame) { pdfFrame.style.display = 'none'; pdfFrame.src = 'about:blank'; }
+      if (imgWrap) imgWrap.style.display = 'none';
+      if (textWrap) textWrap.style.display = 'none';
+      if (loader) {
+        loader.style.display = 'block';
+        loader.innerHTML = `
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" style="animation: spin 1s linear infinite; margin-bottom: 0.5rem; display: inline-block;"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          <div style="font-weight: 500; color: #1E293B;">Kinukuha ang file...</div>
+        `;
+      }
+      if (btnNewTab) {
+        btnNewTab.href = url;
+        btnNewTab.style.display = 'inline-flex';
+      }
+
+      try {
+        const previewRes = await fetch(url);
+        if (!previewRes.ok) {
+          throw new Error(`Hindi ma-load ang file preview (HTTP ${previewRes.status})`);
+        }
+
+        const contentType = (previewRes.headers.get('content-type') || '').toLowerCase();
+
+        if (contentType.includes('application/pdf')) {
+          inspectedDocState.activeViewType = 'pdf';
+          if (typeBadge) { typeBadge.innerText = 'PDF DOCUMENT'; typeBadge.className = 'badge badge-primary'; }
+          if (loader) loader.style.display = 'none';
+          if (pdfFrame) {
+            pdfFrame.src = url;
+            pdfFrame.style.display = 'block';
+          }
+        } else if (contentType.includes('image/')) {
+          inspectedDocState.activeViewType = 'image';
+          if (typeBadge) { typeBadge.innerText = 'IMAGE'; typeBadge.className = 'badge badge-success'; }
+          if (loader) loader.style.display = 'none';
+          if (imgWrap && img) {
+            img.src = url;
+            imgWrap.style.display = 'flex';
+          }
+        } else if (contentType.includes('text/') || contentType.includes('application/json')) {
+          inspectedDocState.activeViewType = 'text';
+          if (typeBadge) { typeBadge.innerText = 'TEXT DOCUMENT'; typeBadge.className = 'badge badge-neutral'; }
+          const textContent = await previewRes.text();
+          if (loader) loader.style.display = 'none';
+          if (textWrap && textPreview) {
+            textPreview.innerText = textContent;
+            textWrap.style.display = 'block';
+          }
+        } else {
+          // Check extension from fallback title
+          const titleLower = (fallbackTitle || '').toLowerCase();
+          if (titleLower.endsWith('.pdf')) {
+            inspectedDocState.activeViewType = 'pdf';
+            if (typeBadge) { typeBadge.innerText = 'PDF DOCUMENT'; typeBadge.className = 'badge badge-primary'; }
+            if (loader) loader.style.display = 'none';
+            if (pdfFrame) {
+              pdfFrame.src = url;
+              pdfFrame.style.display = 'block';
+            }
+          } else if (titleLower.endsWith('.png') || titleLower.endsWith('.jpg') || titleLower.endsWith('.jpeg') || titleLower.endsWith('.gif') || titleLower.endsWith('.webp')) {
+            inspectedDocState.activeViewType = 'image';
+            if (typeBadge) { typeBadge.innerText = 'IMAGE'; typeBadge.className = 'badge badge-success'; }
+            if (loader) loader.style.display = 'none';
+            if (imgWrap && img) {
+              img.src = url;
+              imgWrap.style.display = 'flex';
+            }
+          } else {
+            const textContent = await previewRes.text();
+            if (textContent && textContent.length < 50000 && !textContent.includes('\x00')) {
+              inspectedDocState.activeViewType = 'text';
+              if (typeBadge) { typeBadge.innerText = 'DOCUMENT CONTENT'; typeBadge.className = 'badge badge-neutral'; }
+              if (loader) loader.style.display = 'none';
+              if (textWrap && textPreview) {
+                textPreview.innerText = textContent;
+                textWrap.style.display = 'block';
+              }
+            } else {
+              if (typeBadge) { typeBadge.innerText = 'ATTACHED FILE'; typeBadge.className = 'badge badge-neutral'; }
+              if (loader) {
+                loader.style.display = 'block';
+                loader.innerHTML = `
+                  <div style="font-weight: 600; color: #1E293B; margin-bottom: 0.35rem;">Available for direct download.</div>
+                  <div style="font-size: 0.8rem; color: #64748B; margin-bottom: 0.75rem;">MIME: ${contentType || 'application/octet-stream'}</div>
+                  <a href="${url}" class="btn btn-primary btn-sm" download>Download "${fallbackTitle || 'File'}"</a>
+                `;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (typeBadge) { typeBadge.innerText = 'ERROR'; typeBadge.className = 'badge badge-danger'; }
+        if (loader) {
+          loader.style.display = 'block';
+          loader.innerHTML = `
+            <div style="color: #DC2626; font-weight: 600; margin-bottom: 0.35rem;">Failed to render preview</div>
+            <div style="color: #64748B; font-size: 0.8rem;">${err.message}</div>
+          `;
+        }
+      }
+    }
+
+    function selectAttachmentForPreview(idx) {
+      if (!inspectedDocState.doc) return;
+      const doc = inspectedDocState.doc;
+      inspectedDocState.currentAttachmentIndex = idx;
+
+      // Update active highlight classes in left pane
+      const items = document.querySelectorAll('.attachment-item-card');
+      items.forEach((el, i) => {
+        if (idx === null) {
+          // Master merged view
+          if (el.getAttribute('data-att-idx') === 'master') {
+            el.style.borderColor = '#2563EB';
+            el.style.background = '#EFF6FF';
+          } else {
+            el.style.borderColor = '#E2E8F0';
+            el.style.background = '#FFFFFF';
+          }
+        } else {
+          if (parseInt(el.getAttribute('data-att-idx'), 10) === idx) {
+            el.style.borderColor = '#16A34A';
+            el.style.background = '#DCFCE7';
+          } else {
+            el.style.borderColor = '#E2E8F0';
+            el.style.background = '#FFFFFF';
+          }
+        }
+      });
+
+      // Switch to preview tab
+      switchInspectTab('preview');
+
+      if (idx === null) {
+        // Preview merged/main dossier
+        const previewHeading = document.getElementById('inspect-preview-heading');
+        if (previewHeading) previewHeading.innerText = `Preview: ${doc.title} (Merged / Master)`;
+        const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&inline=true`;
+        loadPreviewStream(previewUrl, doc.title);
+      } else {
+        const att = inspectedDocState.attachments[idx];
+        const attName = att ? att.name : `Attachment ${idx + 1}`;
+        const previewHeading = document.getElementById('inspect-preview-heading');
+        if (previewHeading) previewHeading.innerText = `Preview: ${attName}`;
+        const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&attachmentIndex=${idx}&inline=true`;
+        loadPreviewStream(previewUrl, attName);
+      }
+    }
 
     function switchInspectTab(tab) {
       const tabPreviewBtn = document.getElementById('btn-tab-preview');
@@ -2939,28 +3144,56 @@
         if (attachMeta && attachMeta.value) {
           try { attachments = JSON.parse(attachMeta.value); } catch(e) {}
         }
+        inspectedDocState.attachments = attachments;
 
         if (attachments.length > 0) {
           if (bundleWrap) bundleWrap.style.display = 'block';
-          if (bundleCount) bundleCount.innerText = `${attachments.length} Files Sama-sama (Merged in View)`;
+          if (bundleCount) bundleCount.innerText = `${attachments.length} File(s) Sama-sama`;
           if (bundleList) {
-            bundleList.innerHTML = attachments.map((att, idx) => `
-              <div style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 4px; padding: 0.4rem 0.65rem; font-size: 0.8rem;">
-                <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0;">
-                  <span class="mono" style="font-size: 0.72rem; color: #166534; font-weight: 700;">[#${idx + 1}]</span>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="1.75"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-                  <span style="font-weight: 600; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px;">${att.name}</span>
-                  <span class="mono" style="font-size: 0.72rem; color: #64748B;">(${(att.size / 1024).toFixed(1)} KB)</span>
+            let listHtml = '';
+            // If multiple files, include Master Consolidated PDF as first option
+            if (attachments.length > 1) {
+              listHtml += `
+                <div class="attachment-item-card" data-att-idx="master" onclick="selectAttachmentForPreview(null)" style="display: flex; justify-content: space-between; align-items: center; background: #EFF6FF; border: 1.5px solid #2563EB; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.15s ease;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0;">
+                    <div style="background: #DBEAFE; color: #1D4ED8; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.72rem; font-weight: 700;">★</div>
+                    <div style="min-width: 0;">
+                      <div style="font-weight: 700; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;">📄 Pinag-isang Buong PDF (Merged)</div>
+                      <div class="mono" style="font-size: 0.7rem; color: #64748B;">Lahat ng kalakip (${attachments.length} files) sa iisang file</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <span class="badge badge-primary" style="font-size: 0.65rem;">MERGED</span>
+                  </div>
                 </div>
-                <div style="display: flex; gap: 0.35rem; align-items: center;">
-                  <span class="badge badge-neutral" style="font-size: 0.65rem;">${att.type || 'DOCUMENT'}</span>
-                  <a href="${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;" title="Download individual file" download>I-download (Hiwalay)</a>
+              `;
+            }
+
+            // Render each uploaded attachment as interactive clickable card
+            attachments.forEach((att, idx) => {
+              const isSelected = (attachments.length === 1 && idx === 0) || (attachments.length > 1 && false);
+              listHtml += `
+                <div class="attachment-item-card" data-att-idx="${idx}" onclick="selectAttachmentForPreview(${idx})" style="display: flex; justify-content: space-between; align-items: center; background: ${isSelected ? '#DCFCE7' : '#FFFFFF'}; border: 1.5px solid ${isSelected ? '#16A34A' : '#E2E8F0'}; border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.15s ease;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0;">
+                    <span class="mono" style="font-size: 0.72rem; color: #166534; font-weight: 700; background: #DCFCE7; padding: 2px 6px; border-radius: 4px;">#${idx + 1}</span>
+                    <div style="min-width: 0;">
+                      <div style="font-weight: 600; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;" title="${att.name}">${att.name}</div>
+                      <div class="mono" style="font-size: 0.7rem; color: #64748B;">${((att.size || 0) / 1024).toFixed(1)} KB • I-click para ma-view</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <span class="badge badge-neutral" style="font-size: 0.65rem;">${att.type || 'FILE'}</span>
+                    <a href="${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}" class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.15rem 0.4rem; background: #FFFFFF;" title="Direct download this file" download onclick="event.stopPropagation();">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </a>
+                  </div>
                 </div>
-              </div>
-            `).join('');
+              `;
+            });
+            bundleList.innerHTML = listHtml;
           }
           const infoAttachStatus = document.getElementById('info-doc-attachment-status');
-          if (infoAttachStatus) infoAttachStatus.innerText = `Bundle Package (${attachments.length} Files Sama-sama, ${(doc.fileSizeBytes / 1024).toFixed(1)} KB)`;
+          if (infoAttachStatus) infoAttachStatus.innerText = `Package (${attachments.length} Files Sama-sama, ${(doc.fileSizeBytes / 1024).toFixed(1)} KB)`;
         } else {
           if (bundleWrap) bundleWrap.style.display = 'none';
           const hasFile = doc.fileSizeBytes > 0 || doc.storageKeyPdf || (doc.pages && doc.pages.length > 0);
@@ -2977,14 +3210,12 @@
         if (hasFile) {
           const downloadMergedUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&format=merged`;
           const downloadSplitUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&format=split`;
-          const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&inline=true`;
 
           if (btnDownloadMerged) {
             btnDownloadMerged.href = downloadMergedUrl;
             btnDownloadMerged.style.display = 'inline-flex';
           }
           if (btnDownloadSplit) {
-            // Show split download if there are multiple attachments OR multiple pages in a PDF
             if (attachments.length > 1 || (doc.pageCount && doc.pageCount > 1)) {
               btnDownloadSplit.href = downloadSplitUrl;
               btnDownloadSplit.style.display = 'inline-flex';
@@ -2993,77 +3224,20 @@
             }
           }
           if (btnFullscreen) btnFullscreen.style.display = 'inline-flex';
-          if (btnNewTab) {
-            btnNewTab.href = previewUrl;
-            btnNewTab.style.display = 'inline-flex';
-          }
 
-          // Inspect preview stream
-          const previewRes = await fetch(previewUrl);
-          if (!previewRes.ok) {
-            throw new Error(`Preview stream returned HTTP ${previewRes.status}`);
-          }
-
-          const contentType = (previewRes.headers.get('content-type') || '').toLowerCase();
-          
-          if (contentType.includes('application/pdf')) {
-            inspectedDocState.activeViewType = 'pdf';
-            if (typeBadge) { typeBadge.innerText = 'PDF DOCUMENT'; typeBadge.className = 'badge badge-primary'; }
-            if (loader) loader.style.display = 'none';
-            if (pdfFrame) {
-              pdfFrame.src = previewUrl;
-              pdfFrame.style.display = 'block';
-            }
-          } else if (contentType.includes('image/')) {
-            inspectedDocState.activeViewType = 'image';
-            if (typeBadge) { typeBadge.innerText = 'IMAGE'; typeBadge.className = 'badge badge-success'; }
-            if (loader) loader.style.display = 'none';
-            if (imgWrap && img) {
-              img.src = previewUrl;
-              imgWrap.style.display = 'flex';
-            }
-          } else if (contentType.includes('text/') || contentType.includes('application/json')) {
-            inspectedDocState.activeViewType = 'text';
-            if (typeBadge) { typeBadge.innerText = 'TEXT DOCUMENT'; typeBadge.className = 'badge badge-neutral'; }
-            const textContent = await previewRes.text();
-            if (loader) loader.style.display = 'none';
-            if (textWrap && textPreview) {
-              textPreview.innerText = textContent;
-              textWrap.style.display = 'block';
+          // Choose initial preview target:
+          // If attachments are present, preview the first attachment or master merged view
+          if (attachments.length > 0) {
+            if (attachments.length === 1) {
+              selectAttachmentForPreview(0);
+            } else {
+              selectAttachmentForPreview(null); // Load merged dossier by default
             }
           } else {
-            // Check title
-            if (doc.title.toLowerCase().endsWith('.pdf') || doc.documentType === 'INCOMING_SCAN') {
-              inspectedDocState.activeViewType = 'pdf';
-              if (typeBadge) { typeBadge.innerText = 'PDF DOCUMENT'; typeBadge.className = 'badge badge-primary'; }
-              if (loader) loader.style.display = 'none';
-              if (pdfFrame) {
-                pdfFrame.src = previewUrl;
-                pdfFrame.style.display = 'block';
-              }
-            } else {
-              // Try text read
-              const textContent = await previewRes.text();
-              if (textContent && textContent.length < 50000 && !textContent.includes('\x00')) {
-                inspectedDocState.activeViewType = 'text';
-                if (typeBadge) { typeBadge.innerText = 'DOCUMENT CONTENT'; typeBadge.className = 'badge badge-neutral'; }
-                if (loader) loader.style.display = 'none';
-                if (textWrap && textPreview) {
-                  textPreview.innerText = textContent;
-                  textWrap.style.display = 'block';
-                }
-              } else {
-                if (typeBadge) { typeBadge.innerText = 'ATTACHED FILE'; typeBadge.className = 'badge badge-neutral'; }
-                if (loader) {
-                  loader.style.display = 'block';
-                  loader.innerHTML = `
-                    <div style="font-weight: 600; color: #1E293B; margin-bottom: 0.35rem;">File is ready for download.</div>
-                    <div style="font-size: 0.8rem; color: #64748B; margin-bottom: 0.75rem;">Binary file type: ${contentType || 'application/octet-stream'}</div>
-                    <a href="${downloadUrl}" class="btn btn-primary btn-sm" download>Download "${doc.title}"</a>
-                  `;
-                }
-              }
-            }
+            const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&inline=true`;
+            const previewHeading = document.getElementById('inspect-preview-heading');
+            if (previewHeading) previewHeading.innerText = `Document Preview: ${doc.title}`;
+            loadPreviewStream(previewUrl, doc.title);
           }
         } else {
           if (typeBadge) { typeBadge.innerText = 'RECORD ONLY'; typeBadge.className = 'badge badge-neutral'; }

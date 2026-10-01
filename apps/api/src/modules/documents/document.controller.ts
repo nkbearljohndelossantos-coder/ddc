@@ -153,11 +153,25 @@ export class DocumentController {
           pages: {
             create: scannedPagesData,
           },
+          metadata: {
+            create: finalStorageKey ? [
+              {
+                key: 'attachment_files',
+                value: JSON.stringify([{
+                  name: docTitle || 'Document',
+                  size: finalSizeBytes,
+                  type: documentType || 'INVOICE',
+                  pageCount: finalPageCount,
+                  storageKey: finalStorageKey,
+                }]),
+              }
+            ] : [],
+          },
           ocrResult: {
             create: {
               avgConfidence: 98.5,
               confidence: 98.5,
-              rawText: `Document dossier "${docTitle}" (${finalPageCount} pages) captured via Brother ADS-4300N hardware ADF scanner. Merged into unified PDF and verified with SHA-256 hash ${finalHash}.`,
+              rawText: `Document dossier "${docTitle}" (${finalPageCount} pages) captured. Merged into unified PDF and verified with SHA-256 hash ${finalHash}.`,
               language: 'eng',
               pageCount: finalPageCount,
             },
@@ -900,25 +914,42 @@ export class DocumentController {
         }
       }
 
-      // If document is a multi-file package and we haven't already merged it or file is missing
+      // Parse attachments metadata if present
       const attachMeta = (doc.metadata || []).find(m => m.key === 'attachment_files');
       let parsedAttachments: any[] = [];
       if (attachMeta && attachMeta.value) {
-        try {
-          parsedAttachments = JSON.parse(attachMeta.value);
-          if (parsedAttachments.length > 1) {
-            const attPaths = parsedAttachments.map((a: any) => a.storageKey).filter((sp: any) => sp && fs.existsSync(sp));
-            if (attPaths.length > 0 && (!filePath || !filePath.includes('MERGED'))) {
-              const mergedBuffer = await mergeFilesToPdf(attPaths);
-              if (mergedBuffer) {
-                res.setHeader('Content-Type', 'application/pdf');
-                res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.title)}.pdf"`);
-                res.send(mergedBuffer);
-                return;
-              }
-            }
+        try { parsedAttachments = JSON.parse(attachMeta.value); } catch (e) {}
+      }
+
+      // Check if a specific attachment index is requested for preview
+      const { attachmentIndex } = req.query;
+      if (attachmentIndex !== undefined && attachmentIndex !== null && attachmentIndex !== '') {
+        const idx = parseInt(attachmentIndex as string, 10);
+        if (!isNaN(idx) && parsedAttachments[idx]) {
+          const targetAtt = parsedAttachments[idx];
+          const candidateAttPath = targetAtt.storageKey || (doc.pages[idx] ? doc.pages[idx].storageKey : null);
+          if (candidateAttPath && fs.existsSync(candidateAttPath)) {
+            const mimeType = detectMimeType(candidateAttPath, targetAtt.name);
+            res.setHeader('Content-Type', mimeType);
+            res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(targetAtt.name || path.basename(candidateAttPath))}"`);
+            fs.createReadStream(candidateAttPath).pipe(res);
+            return;
           }
-        } catch (e) {}
+        }
+      }
+
+      // If document is a multi-file package and we haven't already merged it or file is missing
+      if (parsedAttachments.length > 1) {
+        const attPaths = parsedAttachments.map((a: any) => a.storageKey).filter((sp: any) => sp && fs.existsSync(sp));
+        if (attPaths.length > 0 && (!filePath || !filePath.includes('MERGED'))) {
+          const mergedBuffer = await mergeFilesToPdf(attPaths);
+          if (mergedBuffer) {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.title)}.pdf"`);
+            res.send(mergedBuffer);
+            return;
+          }
+        }
       }
 
       if (filePath) {
