@@ -47,6 +47,37 @@ export function detectMimeType(filePath: string, fallbackName?: string): string 
   return 'application/octet-stream';
 }
 
+export function resolveProperDownloadFilename(preferredName: string, filePath?: string | null, mimeType?: string): string {
+  let base = (preferredName || 'document').trim();
+  let existingExt = path.extname(base).toLowerCase();
+  
+  if (!existingExt && filePath) {
+    existingExt = path.extname(filePath).toLowerCase();
+  }
+
+  if (!existingExt && mimeType) {
+    if (mimeType.includes('application/pdf')) existingExt = '.pdf';
+    else if (mimeType.includes('image/jpeg')) existingExt = '.jpg';
+    else if (mimeType.includes('image/png')) existingExt = '.png';
+    else if (mimeType.includes('image/gif')) existingExt = '.gif';
+    else if (mimeType.includes('image/webp')) existingExt = '.webp';
+    else if (mimeType.includes('text/plain')) existingExt = '.txt';
+    else if (mimeType.includes('text/csv')) existingExt = '.csv';
+    else if (mimeType.includes('application/json')) existingExt = '.json';
+  }
+
+  if (!existingExt) {
+    existingExt = '.pdf';
+  }
+
+  // Ensure base ends with the extension
+  if (!base.toLowerCase().endsWith(existingExt)) {
+    base = `${base}${existingExt}`;
+  }
+
+  return base.replace(/[^\w\s.-]/gi, '_');
+}
+
 export class DocumentController {
   // Ingest / Create Document (From Scanner or Web UI)
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -158,7 +189,7 @@ export class DocumentController {
               {
                 key: 'attachment_files',
                 value: JSON.stringify([{
-                  name: docTitle || 'Document',
+                  name: resolveProperDownloadFilename(docTitle || 'Document', finalStorageKey, detectMimeType(finalStorageKey, docTitle)),
                   size: finalSizeBytes,
                   type: documentType || 'INVOICE',
                   pageCount: finalPageCount,
@@ -304,14 +335,27 @@ export class DocumentController {
           }
         });
 
-        const attachmentsMeta = documents.map((d: any, idx: number) => ({
-          name: d.title || `Attachment_${idx + 1}`,
-          size: d.fileSizeBytes || 102400,
-          type: d.documentType || defaultDocumentType || 'GENERAL',
-          pageCount: d.pageCount || 1,
-          source: d.source || effectiveSource || defaultDirection || 'Batch Ingest',
-          storageKey: d.storageKey || null,
-        }));
+        const attachmentsMeta = documents.map((d: any, idx: number) => {
+          let origName = d.originalFilename || d.filename || d.title || `Attachment_${idx + 1}`;
+          let ext = path.extname(origName);
+          if (!ext && d.storageKey) {
+            ext = path.extname(d.storageKey);
+          }
+          if (!ext) {
+            ext = '.pdf';
+          }
+          if (!origName.toLowerCase().endsWith(ext.toLowerCase())) {
+            origName = `${origName}${ext}`;
+          }
+          return {
+            name: origName,
+            size: d.fileSizeBytes || 102400,
+            type: d.documentType || defaultDocumentType || 'GENERAL',
+            pageCount: d.pageCount || 1,
+            source: d.source || effectiveSource || defaultDirection || 'Batch Ingest',
+            storageKey: d.storageKey || null,
+          };
+        });
 
         // Use the primary/first file's storage key as default storageKeyPdf reference
         let finalStorageKeyPdf = documents[0]?.storageKey || null;
@@ -716,9 +760,11 @@ export class DocumentController {
           const attPath = targetAtt.storageKey || (doc.pages[idx] ? doc.pages[idx].storageKey : null);
           if (attPath && fs.existsSync(attPath)) {
             const mimeType = detectMimeType(attPath, targetAtt.name);
-            const downloadFilename = targetAtt.name || path.basename(attPath);
+            const downloadFilename = resolveProperDownloadFilename(targetAtt.name, attPath, mimeType);
+            const stat = fs.statSync(attPath);
             res.setHeader('Content-Type', mimeType);
-            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(downloadFilename)}"`);
+            res.setHeader('Content-Length', stat.size);
+            res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"; filename*=UTF-8''${encodeURIComponent(downloadFilename)}`);
             fs.createReadStream(attPath).pipe(res);
             return;
           }
@@ -735,8 +781,10 @@ export class DocumentController {
             const att = attachments[i];
             const candidate = att.storageKey || (doc.pages[i] ? doc.pages[i].storageKey : null);
             if (candidate && fs.existsSync(candidate)) {
+              const mime = detectMimeType(candidate, att.name);
+              const properName = resolveProperDownloadFilename(att.name || `File_${i + 1}`, candidate, mime);
               filesToZip.push({
-                name: att.name || `File_${i + 1}_${path.basename(candidate)}`,
+                name: properName,
                 content: fs.readFileSync(candidate),
               });
             }
@@ -772,9 +820,10 @@ export class DocumentController {
 
         if (filesToZip.length > 0) {
           const zipBuffer = createZipArchive(filesToZip);
-          const zipFilename = `${(doc.title || 'Document_Package').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_Split_Files.zip`;
+          const zipFilename = `${(doc.title || 'Document_Package').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_Files.zip`;
           res.setHeader('Content-Type', 'application/zip');
-          res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(zipFilename)}"`);
+          res.setHeader('Content-Length', zipBuffer.length);
+          res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"; filename*=UTF-8''${encodeURIComponent(zipFilename)}`);
           res.send(zipBuffer);
           return;
         }
@@ -789,9 +838,11 @@ export class DocumentController {
         const firstPath = firstAtt.storageKey || (doc.pages[0] ? doc.pages[0].storageKey : null);
         if (firstPath && fs.existsSync(firstPath)) {
           const mimeType = detectMimeType(firstPath, firstAtt.name);
-          const dlName = firstAtt.name || path.basename(firstPath);
+          const dlName = resolveProperDownloadFilename(firstAtt.name, firstPath, mimeType);
+          const stat = fs.statSync(firstPath);
           res.setHeader('Content-Type', mimeType);
-          res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dlName)}"`);
+          res.setHeader('Content-Length', stat.size);
+          res.setHeader('Content-Disposition', `attachment; filename="${dlName}"; filename*=UTF-8''${encodeURIComponent(dlName)}`);
           fs.createReadStream(firstPath).pipe(res);
           return;
         }
@@ -810,9 +861,11 @@ export class DocumentController {
         }
 
         const disposition = req.query.inline === 'true' ? 'inline' : 'attachment';
-        const dlName = (doc.title.toLowerCase().endsWith('.pdf') ? doc.title : `${doc.title}.pdf`).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const dlName = resolveProperDownloadFilename(doc.title, storageKey, mimeType);
+        const stat = fs.statSync(storageKey);
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(dlName)}"`);
+        res.setHeader('Content-Length', stat.size);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${dlName}"; filename*=UTF-8''${encodeURIComponent(dlName)}`);
         fs.createReadStream(storageKey).pipe(res);
         return;
       }
@@ -837,7 +890,8 @@ export class DocumentController {
 
       const dlName = `${(doc.title || 'Document').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_Dossier.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(dlName)}"`);
+      res.setHeader('Content-Length', docketPdf.length);
+      res.setHeader('Content-Disposition', `attachment; filename="${dlName}"; filename*=UTF-8''${encodeURIComponent(dlName)}`);
       res.send(docketPdf);
       return;
     } catch (error) {

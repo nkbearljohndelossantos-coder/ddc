@@ -1667,6 +1667,10 @@
                 </a>
               </div>
               <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <a id="inspect-btn-download-file" href="#" class="btn btn-outline btn-sm" download style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; color: #1E293B; border-color: #CBD5E1; background: #FFFFFF;" title="Direct download currently previewed file">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span id="text-download-file-btn">Download File</span>
+                </a>
                 <a id="inspect-btn-download-split" href="#" target="_blank" class="btn btn-primary btn-sm" download style="display: none; font-weight: 600;" title="Download all attached files as a ZIP archive">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Download Package (ZIP)
@@ -3040,10 +3044,20 @@
       // Switch to preview tab
       switchInspectTab('preview');
 
+      const btnDownloadFile = document.getElementById('inspect-btn-download-file');
+      const textDownloadFile = document.getElementById('text-download-file-btn');
+
       if (idx === null || !inspectedDocState.attachments || inspectedDocState.attachments.length === 0) {
         const previewHeading = document.getElementById('inspect-preview-heading');
         if (previewHeading) previewHeading.innerText = `Document: ${doc.title}`;
         const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&inline=true`;
+        const downloadUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}`;
+        if (btnDownloadFile) {
+          btnDownloadFile.href = downloadUrl;
+          btnDownloadFile.download = doc.title || 'document.pdf';
+          btnDownloadFile.style.display = 'inline-flex';
+        }
+        if (textDownloadFile) textDownloadFile.innerText = 'Download File';
         loadPreviewStream(previewUrl, doc.title);
       } else {
         const att = inspectedDocState.attachments[idx];
@@ -3051,6 +3065,13 @@
         const previewHeading = document.getElementById('inspect-preview-heading');
         if (previewHeading) previewHeading.innerText = `${attName}`;
         const previewUrl = `${API_BASE}/api/v1/documents/${doc.id}/preview?token=${auth.token}&attachmentIndex=${idx}&inline=true`;
+        const downloadUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}`;
+        if (btnDownloadFile) {
+          btnDownloadFile.href = downloadUrl;
+          btnDownloadFile.download = attName;
+          btnDownloadFile.style.display = 'inline-flex';
+        }
+        if (textDownloadFile) textDownloadFile.innerText = `Download (${attName.length > 18 ? attName.slice(0, 15) + '...' : attName})`;
         loadPreviewStream(previewUrl, attName);
       }
     }
@@ -3235,7 +3256,7 @@
                   </div>
                   <div style="display: flex; gap: 0.4rem; align-items: center; flex-shrink: 0;">
                     <span class="badge ${badgeColor}" style="font-size: 0.65rem; padding: 0.15rem 0.4rem;">${badgeLabel}</span>
-                    <a href="${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}" class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.25rem 0.45rem; background: #FFFFFF; border-color: #CBD5E1; color: #475569;" title="Direct download ${att.name}" download onclick="event.stopPropagation();">
+                    <a href="${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&attachmentIndex=${idx}" class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.25rem 0.45rem; background: #FFFFFF; border-color: #CBD5E1; color: #475569;" title="Direct download ${att.name}" download="${att.name}" onclick="event.stopPropagation();">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </a>
                   </div>
