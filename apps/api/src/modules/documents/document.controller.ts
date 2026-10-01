@@ -771,8 +771,8 @@ export class DocumentController {
         }
       }
 
-      // Sub-case B: Download as SPLIT / SEPARATE FILES (ZIP archive)
-      if (format === 'split' || format === 'zip') {
+      // Sub-case B: Download as ALL FILES (ZIP archive)
+      if (format === 'all' || format === 'split' || format === 'zip') {
         const filesToZip: { name: string; content: Buffer }[] = [];
 
         // 1. If it's a multi-file package with individual attachment files saved on disk
@@ -818,9 +818,30 @@ export class DocumentController {
           }
         }
 
+        // 3. If single file or standard document, package into ZIP if requested
+        if (filesToZip.length === 0) {
+          let mainFilePath = doc.storageKeyPdf && fs.existsSync(doc.storageKeyPdf) ? doc.storageKeyPdf : null;
+          if (!mainFilePath && doc.pages && doc.pages.length > 0) {
+            for (const p of doc.pages) {
+              if (p.storageKey && fs.existsSync(p.storageKey)) {
+                mainFilePath = p.storageKey;
+                break;
+              }
+            }
+          }
+          if (mainFilePath && fs.existsSync(mainFilePath)) {
+            const mime = detectMimeType(mainFilePath, doc.title);
+            const properName = resolveProperDownloadFilename(doc.title, mainFilePath, mime);
+            filesToZip.push({
+              name: properName,
+              content: fs.readFileSync(mainFilePath),
+            });
+          }
+        }
+
         if (filesToZip.length > 0) {
           const zipBuffer = createZipArchive(filesToZip);
-          const zipFilename = `${(doc.title || 'Document_Package').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_Files.zip`;
+          const zipFilename = `${(doc.title || 'Document_Package').replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}_All_Files.zip`;
           res.setHeader('Content-Type', 'application/zip');
           res.setHeader('Content-Length', zipBuffer.length);
           res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"; filename*=UTF-8''${encodeURIComponent(zipFilename)}`);

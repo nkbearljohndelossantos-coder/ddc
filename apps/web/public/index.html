@@ -1568,11 +1568,15 @@
 
             <!-- Tab Section 1: Attached Files List (Primary Content) -->
             <div id="inspect-tab-files-pane" style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.75rem; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.04em;">
-                  Uploaded Files
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 0.35rem;">
+                  <span>Uploaded Files</span>
+                  <span class="badge badge-primary" id="inspect-bundle-count">1 File</span>
                 </div>
-                <span class="badge badge-primary" id="inspect-bundle-count">1 File</span>
+                <a id="inspect-btn-download-all-left" href="#" target="_blank" class="btn btn-primary btn-sm" download style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;" title="Download all attached files as a ZIP archive">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Download All</span>
+                </a>
               </div>
               <div id="inspect-bundle-files-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 480px; overflow-y: auto; padding-right: 2px;">
                 <!-- Populated dynamically -->
@@ -1673,7 +1677,7 @@
                 </a>
                 <a id="inspect-btn-download-split" href="#" target="_blank" class="btn btn-primary btn-sm" download style="display: none; font-weight: 600;" title="Download all attached files as a ZIP archive">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Download Package (ZIP)
+                  <span id="text-download-all-btn">Download All (ZIP)</span>
                 </a>
               </div>
             </div>
@@ -3135,9 +3139,13 @@
       const ocrPreview = document.getElementById('inspect-ocr-preview');
       const loader = document.getElementById('inspect-img-loading');
       const btnDownloadSplit = document.getElementById('inspect-btn-download-split');
+      const btnDownloadAllLeft = document.getElementById('inspect-btn-download-all-left');
       const btnFullscreen = document.getElementById('btn-inspect-fullscreen');
       const btnNewTab = document.getElementById('btn-preview-newtab');
       const typeBadge = document.getElementById('inspect-file-type-badge');
+
+      if (btnDownloadSplit) btnDownloadSplit.style.display = 'none';
+      if (btnDownloadAllLeft) btnDownloadAllLeft.style.display = 'none';
 
       if (pdfFrame) { pdfFrame.style.display = 'none'; pdfFrame.src = 'about:blank'; }
       if (imgWrap) imgWrap.style.display = 'none';
@@ -3297,15 +3305,15 @@
         const hasFile = doc.fileSizeBytes > 0 || doc.storageKeyPdf || (doc.pages && doc.pages.length > 0) || (attachments.length > 0);
 
         if (hasFile) {
-          const downloadSplitUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&format=split`;
+          const downloadAllUrl = `${API_BASE}/api/v1/documents/${doc.id}/download?token=${auth.token}&format=all`;
 
           if (btnDownloadSplit) {
-            if (attachments.length > 1 || (doc.pageCount && doc.pageCount > 1)) {
-              btnDownloadSplit.href = downloadSplitUrl;
-              btnDownloadSplit.style.display = 'inline-flex';
-            } else {
-              btnDownloadSplit.style.display = 'none';
-            }
+            btnDownloadSplit.href = downloadAllUrl;
+            btnDownloadSplit.style.display = 'inline-flex';
+          }
+          if (btnDownloadAllLeft) {
+            btnDownloadAllLeft.href = downloadAllUrl;
+            btnDownloadAllLeft.style.display = 'inline-flex';
           }
           if (btnFullscreen) btnFullscreen.style.display = 'inline-flex';
 
@@ -4776,6 +4784,10 @@
                           <div style="display: flex; gap: 0.35rem; align-items: center; justify-content: flex-end;">
                             ${isPendingReg ? `<button class="btn btn-primary btn-sm" onclick="openCompleteRegistrationModal('${d.id}')" title="Complete Registration">Register</button>` : ''}
                             <button class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')" title="View Document">${isBundle ? 'View Package' : 'View'}</button>
+                            ${hasFile ? `<a href="${API_BASE}/api/v1/documents/${d.id}/download?token=${auth.token}&format=all" class="btn btn-outline btn-sm" title="Download all files in this record" download style="color: #2563EB;">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                              <span>Download</span>
+                            </a>` : ''}
                             <button class="btn btn-outline btn-sm" onclick="openRouteDocumentModal('${d.id}')" title="Route Document">Route</button>
                             <button class="btn btn-danger-outline btn-sm" onclick="deleteFolderDirect('${d.id}', '${d.title}')" title="Delete">Delete</button>
                           </div>
