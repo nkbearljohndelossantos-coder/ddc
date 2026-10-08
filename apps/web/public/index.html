@@ -5458,11 +5458,19 @@
       }
     }
 
+    // Helper: Resolve custom user tags for any document record
+    function getDocCustomTags(d) {
+      if (!d) return '';
+      const metaCustom = (d.metadata || []).find(m => m.key === 'custom_tags')?.value;
+      if (metaCustom && metaCustom.trim()) return metaCustom.trim();
+      return '';
+    }
+
     // Helper: Render Minimalist Unified Folder + Clickable Category Tag Pill (opens 1-Click Inline Tag Popover)
     function renderDocCategoryAndTagHtml(d) {
       const folderCat = getDocFolderCategory(d);
       const catTag = getDocCategoryTag(d);
-      const customTags = (d.metadata || []).find(m => m.key === 'custom_tags')?.value || '';
+      const customTags = getDocCustomTags(d);
       const autoRule = (d.metadata || []).find(m => m.key === 'auto_tag_rule')?.value || '';
       const isBir = folderCat === 'BIR';
 
