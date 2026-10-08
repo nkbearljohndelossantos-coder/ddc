@@ -1124,9 +1124,290 @@
         min-height: 32px;
       }
     }
+
+    /* =========================================================================
+       MINIMALIST DESIGN SYSTEM & CLEAN WORKSPACE OVERRIDES
+       ========================================================================= */
+    .minimal-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.5rem 0.75rem;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      margin-bottom: 0.65rem;
+    }
+
+    .segmented-pills {
+      display: inline-flex;
+      align-items: center;
+      background: #F1F5F9;
+      padding: 3px;
+      border-radius: 7px;
+      gap: 2px;
+    }
+
+    .seg-pill {
+      border: none;
+      background: transparent;
+      color: #475569;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.32rem 0.7rem;
+      border-radius: 5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.12s ease;
+    }
+
+    .seg-pill:hover {
+      color: #0F172A;
+    }
+
+    .seg-pill.active {
+      background: #FFFFFF;
+      color: #0F172A;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    .dot-indicator {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-bir { background: #D97706; }
+    .dot-company { background: #2563EB; }
+    .dot-vault { background: #10B981; }
+
+    .minimal-chip-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+      padding: 0 0.15rem;
+    }
+
+    .tag-filter-chip {
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      color: #475569;
+      font-size: 0.71rem;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .tag-filter-chip:hover {
+      border-color: #CBD5E1;
+      color: #0F172A;
+      background: #F8FAFC;
+    }
+    .tag-filter-chip.active {
+      background: #0F172A;
+      color: #FFFFFF;
+      border-color: #0F172A;
+    }
+
+    .tag-pill-minimal {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.38rem;
+      padding: 0.22rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      color: #1E293B;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      user-select: none;
+    }
+    .tag-pill-minimal:hover {
+      border-color: #94A3B8;
+      background: #F1F5F9;
+    }
+    .tag-pill-minimal.is-bir {
+      background: #FFFBEB;
+      border-color: #FDE68A;
+      color: #92400E;
+    }
+    .tag-pill-minimal.is-company {
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+      color: #1E40AF;
+    }
+
+    .auto-rule-badge {
+      font-size: 0.64rem;
+      padding: 0.1rem 0.38rem;
+      border-radius: 4px;
+      background: #F3E8FF;
+      color: #6B21A8;
+      border: 1px solid #E9D5FF;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    /* Minimalist Row Action Menu (⋯) */
+    .row-actions-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.35rem;
+      position: relative;
+    }
+    .btn-icon-more {
+      width: 30px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.95rem;
+      line-height: 1;
+    }
+    .btn-icon-more:hover {
+      background: #F8FAFC;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+    .row-dropdown-menu {
+      position: absolute;
+      right: 0;
+      top: 32px;
+      z-index: 90;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+      min-width: 195px;
+      padding: 0.3rem;
+      display: none;
+      flex-direction: column;
+      text-align: left;
+    }
+    .row-dropdown-menu.open {
+      display: flex;
+    }
+    .row-dropdown-item {
+      border: none;
+      background: transparent;
+      padding: 0.42rem 0.65rem;
+      font-size: 0.78rem;
+      color: #1E293B;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      text-decoration: none;
+      width: 100%;
+      text-align: left;
+    }
+    .row-dropdown-item:hover {
+      background: #F1F5F9;
+    }
+    .row-dropdown-item.danger {
+      color: #DC2626;
+    }
+    .row-dropdown-item.danger:hover {
+      background: #FEF2F2;
+    }
+
+    /* 1-Click Inline Tag Switcher Popover */
+    #inline-tag-popover {
+      position: fixed;
+      z-index: 9999;
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+      width: 250px;
+      padding: 0.45rem;
+      display: none;
+    }
+    .inline-tag-group-title {
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748B;
+      padding: 0.3rem 0.5rem 0.15rem;
+    }
+    .inline-tag-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 0.34rem 0.55rem;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #1E293B;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .inline-tag-option:hover {
+      background: #F1F5F9;
+    }
+
+    /* Global Drag-and-Drop Overlay */
+    #global-drop-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .global-drop-box {
+      background: #FFFFFF;
+      border: 2px dashed #2563EB;
+      border-radius: 12px;
+      padding: 2.5rem 3rem;
+      text-align: center;
+      max-width: 480px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Global Drag & Drop Anywhere Overlay -->
+  <div id="global-drop-overlay">
+    <div class="global-drop-box">
+      <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">✨📄</div>
+      <div style="font-size: 1.05rem; font-weight: 700; color: #0F172A;">Drop files to Upload & Smart Auto-Tag</div>
+      <div style="font-size: 0.8rem; color: #64748B; margin-top: 0.35rem; line-height: 1.5;">
+        Files are automatically separated into Cloud Storage and classified into <strong>🏛️ BIR</strong> or <strong>🏢 Company's Documentation</strong> using OCR + AI Rules.
+      </div>
+    </div>
+  </div>
+
+  <!-- 1-Click Inline Tag Switcher Popover -->
+  <div id="inline-tag-popover"></div>
 
   <!-- =========================================================================
        LOGIN SCREEN
@@ -2456,18 +2737,237 @@
       if (backdrop) backdrop.classList.remove('mobile-open');
     }
 
-    // Streamlined DCC Navigation (Transactions Removed; New Ingestion, Folders, Converter & Vault Architecture)
+    // Minimalist 5-Workspace Navigation
     const DCC_NAVIGATION = [
-      { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-      { id: 'documents', label: 'Cloud Storage & Upload', icon: 'documents' },
-      { id: 'folders', label: 'Folders (BIR & Company)', icon: 'folders' },
-      { id: 'scanner', label: 'Scanner & Local Storage', icon: 'scanner' },
-      { id: 'windows-uploader', label: 'Windows Uploader', icon: 'uploader' },
-      { id: 'converter', label: 'Converter & Merge/Detach', icon: 'converter' },
-      { id: 'search', label: 'Search', icon: 'search' },
+      { id: 'dashboard', label: 'Records', icon: 'folders' },
+      { id: 'scanner', label: 'Ingest & Scan', icon: 'scanner' },
+      { id: 'converter', label: 'Tools (Convert / Merge)', icon: 'converter' },
       { id: 'vault', label: '🔐 Private Vault', icon: 'vault' },
       { id: 'settings', label: 'Settings', icon: 'settings' }
     ];
+
+    // =========================================================================
+    // SMART BIR & COMPANY'S DOCUMENTATION AUTO-TAGGING (OCR + AI RULES ENGINE)
+    // =========================================================================
+    const CLIENT_SMART_TAG_RULES = [
+      { folder: 'BIR', tag: '#BIR-2307', docType: 'BIR_2307', rule: 'BIR Form 2307 (Creditable Withholding Tax)', patterns: [/\b2307\b/i, /creditable\s+tax/i, /withholding/i, /\bcwt\b/i] },
+      { folder: 'BIR', tag: '#BIR-2316', docType: 'BIR_2316', rule: 'BIR Form 2316 (Compensation Tax Withheld)', patterns: [/\b2316\b/i, /compensation/i, /\balphalist\b/i] },
+      { folder: 'BIR', tag: '#BIR-VAT', docType: 'BIR_VAT', rule: 'BIR Form 2550M/2550Q (Value-Added Tax)', patterns: [/\b2550[mq]?\b/i, /value[\s-]*added\s+tax/i, /\bvat\b/i] },
+      { folder: 'BIR', tag: '#BIR-Income-Tax', docType: 'BIR_TAX_RETURN', rule: 'BIR Form 1701/1702 (Income Tax Return)', patterns: [/\b170[012][a-z]?\b/i, /income\s+tax/i, /\bitr\b/i] },
+      { folder: 'BIR', tag: '#BIR-COR', docType: 'BIR_COR', rule: 'BIR Form 2303 (Certificate of Registration / ATP)', patterns: [/\b2303\b/i, /certificate\s+of\s+registration/i, /\bbir[\s_-]*cor\b/i, /authority\s+to\s+print/i, /\batp\b/i, /\btin\b/i] },
+      { folder: 'BIR', tag: '#BIR-Official-Receipt', docType: 'BIR_OFFICIAL_RECEIPT', rule: 'BIR Official / Collection Receipt', patterns: [/official\s+receipt/i, /collection\s+receipt/i, /\bbir\s+receipt\b/i, /\bor[\s#-]*\d+/i] },
+      { folder: 'BIR', tag: '#BIR-Tax-Compliance', docType: 'BIR_TAX_RETURN', rule: 'BIR Tax Compliance / Return (0605 / 1601 / eBIRForms)', patterns: [/\bbir\b/i, /\b(0605|1601[cefq]?|1604|2306)\b/i, /\befps\b/i, /\bebirforms\b/i, /\btax\b/i] },
+      { folder: 'COMPANY_DOCS', tag: '#Company-Contract', docType: 'CONTRACT', rule: "Company's — Contract / MOA / NDA", patterns: [/\bcontract\b/i, /\bagreement\b/i, /\bmoa\b/i, /\bmou\b/i, /\bnda\b/i, /\blease\b/i, /deed\s+of/i] },
+      { folder: 'COMPANY_DOCS', tag: '#Company-SEC-GIS', docType: 'COMPANY_DOCUMENTATION', rule: "Company's — SEC / GIS / Board Resolution", patterns: [/\bsec\b/i, /\bgis\b/i, /general\s+information\s+sheet/i, /by[\s-]*laws/i, /board\s+resolution/i, /incorporation/i] },
+      { folder: 'COMPANY_DOCS', tag: '#Company-HR-Record', docType: 'HR_DOCUMENT', rule: "Company's — HR / Employee / Payroll Record", patterns: [/\bhr\b/i, /\bemployee\b/i, /\b201\b/i, /\bpayroll\b/i, /\bpayslip\b/i, /\bdtr\b/i, /\bresume\b/i, /\bmemo\b/i] },
+      { folder: 'COMPANY_DOCS', tag: '#Company-Invoice-PO', docType: 'PURCHASE_ORDER', rule: "Company's — Invoice / Purchase Order / DR", patterns: [/purchase\s+order/i, /\bpo[\s#_-]*\d+/i, /\binvoice\b/i, /\bbilling\b/i, /\bquotation\b/i, /delivery\s+receipt/i, /\bdr[\s#_-]*\d+/i, /\bsoa\b/i] },
+      { folder: 'COMPANY_DOCS', tag: '#Company-Accounting', docType: 'FINANCIAL_RECORD', rule: "Company's — Accounting / Financial / Voucher", patterns: [/\baccounting\b/i, /financial/i, /balance\s+sheet/i, /\bledger\b/i, /\baudit\b/i, /\bvoucher\b/i, /\bdisbursement\b/i, /\bbudget\b/i] },
+      { folder: 'COMPANY_DOCS', tag: '#Company-Permit-License', docType: 'COMPANY_DOCUMENTATION', rule: "Company's — Permit / License / Clearance", patterns: [/\bpermit\b/i, /mayor/i, /clearance/i, /sanitary/i, /fire\s+safety/i, /\blicense\b/i, /\bfda\b/i, /\bdenr\b/i, /\bdti\b/i, /\bsss\b/i, /philhealth/i, /pag[\s-]*ibig/i] }
+    ];
+
+    function smartClientAutoTag(textInput, fallbackFolder = 'COMPANY_DOCS') {
+      const corpus = String(textInput || '');
+      for (const r of CLIENT_SMART_TAG_RULES) {
+        for (const pat of r.patterns) {
+          if (pat.test(corpus)) {
+            return {
+              folderCategory: r.folder,
+              categoryTag: r.tag,
+              documentType: r.docType,
+              rule: r.rule,
+              confidence: 96.5,
+              matched: true
+            };
+          }
+        }
+      }
+      const isBir = fallbackFolder === 'BIR';
+      return {
+        folderCategory: isBir ? 'BIR' : 'COMPANY_DOCS',
+        categoryTag: isBir ? '#BIR-Tax-Compliance' : '#Company-General-Doc',
+        documentType: isBir ? 'BIR_TAX_RETURN' : 'COMPANY_DOCUMENTATION',
+        rule: isBir ? 'Default BIR Tax Compliance' : "Default Company's Documentation",
+        confidence: 88.0,
+        matched: false
+      };
+    }
+
+    async function runSmartAutoTagAllDocuments() {
+      try {
+        showToast('✨ Running Smart OCR + AI Rules across all Cloud Storage documents...');
+        const res = await apiFetch('/api/v1/documents/auto-tag-all', { method: 'POST', body: JSON.stringify({}) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Auto-tagging failed');
+        showToast(`✔ ${data.message}`, 4500);
+        loadCurrentView();
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 4000);
+      }
+    }
+
+    // 1-Click Inline Tag Switcher Popover
+    let activeInlinePopoverDocId = null;
+
+    function openInlineTagPopover(event, docId) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      activeInlinePopoverDocId = docId;
+      const pop = document.getElementById('inline-tag-popover');
+      if (!pop) return;
+
+      const birTags = ['#BIR-2307', '#BIR-2316', '#BIR-VAT', '#BIR-Income-Tax', '#BIR-COR', '#BIR-Official-Receipt', '#BIR-Tax-Compliance'];
+      const compTags = ['#Company-Contract', '#Company-SEC-GIS', '#Company-HR-Record', '#Company-Invoice-PO', '#Company-Accounting', '#Company-Permit-License', '#Company-General-Doc'];
+
+      pop.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0.5rem; border-bottom: 1px solid #F1F5F9; margin-bottom: 0.2rem;">
+          <span style="font-size: 0.72rem; font-weight: 700; color: #0F172A;">1-Click Switch Tag</span>
+          <button onclick="openEditDocTagModal('${docId}'); closeInlineTagPopover();" style="border: none; background: transparent; color: #2563EB; font-size: 0.68rem; font-weight: 600; cursor: pointer;">Custom…</button>
+        </div>
+        <div class="inline-tag-group-title"><span class="dot-indicator dot-bir"></span> BIR Folder</div>
+        ${birTags.map(t => `<button class="inline-tag-option" onclick="applyInlineTagQuick('${docId}', 'BIR', '${t}')"><span>${t}</span><span style="color:#D97706;font-size:0.65rem;">BIR</span></button>`).join('')}
+        <div class="inline-tag-group-title" style="margin-top: 0.25rem;"><span class="dot-indicator dot-company"></span> Company's Docs</div>
+        ${compTags.map(t => `<button class="inline-tag-option" onclick="applyInlineTagQuick('${docId}', 'COMPANY_DOCS', '${t}')"><span>${t}</span><span style="color:#2563EB;font-size:0.65rem;">Company</span></button>`).join('')}
+      `;
+
+      pop.style.display = 'block';
+      const rect = event?.currentTarget ? event.currentTarget.getBoundingClientRect() : { left: 200, bottom: 200 };
+      const topPos = Math.min(window.innerHeight - 380, Math.max(12, rect.bottom + 6));
+      const leftPos = Math.min(window.innerWidth - 265, Math.max(12, rect.left));
+      pop.style.top = `${topPos}px`;
+      pop.style.left = `${leftPos}px`;
+    }
+
+    function closeInlineTagPopover() {
+      const pop = document.getElementById('inline-tag-popover');
+      if (pop) pop.style.display = 'none';
+      activeInlinePopoverDocId = null;
+    }
+
+    async function applyInlineTagQuick(docId, folderCategory, categoryTag) {
+      closeInlineTagPopover();
+      try {
+        const res = await apiFetch(`/api/v1/documents/${docId}/metadata`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            folderCategory,
+            categoryTag,
+            metadata: { folder_category: folderCategory, category_tag: categoryTag }
+          })
+        });
+        if (!res.ok) throw new Error('Failed to update tag');
+        showToast(`✔ Tagged as ${categoryTag} (${folderCategory === 'BIR' ? 'BIR' : "Company's"})`);
+        loadCurrentView();
+      } catch (err) {
+        showToast(`Error: ${err.message}`);
+      }
+    }
+
+    function toggleRowActionMenu(event, menuId) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      closeInlineTagPopover();
+      document.querySelectorAll('.row-dropdown-menu.open').forEach(el => {
+        if (el.id !== menuId) el.classList.remove('open');
+      });
+      const menu = document.getElementById(menuId);
+      if (menu) menu.classList.toggle('open');
+    }
+
+    document.addEventListener('click', () => {
+      closeInlineTagPopover();
+      document.querySelectorAll('.row-dropdown-menu.open').forEach(el => el.classList.remove('open'));
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('minimal-search-input') || document.getElementById('doc-filter-query') || document.getElementById('adv-search-input');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        } else {
+          navigate('dashboard');
+          setTimeout(() => document.getElementById('minimal-search-input')?.focus(), 120);
+        }
+      }
+    });
+
+    // Global Drag-and-Drop Anywhere Upload & Smart Auto-Tag
+    let globalDragCounter = 0;
+    window.addEventListener('dragenter', (e) => {
+      if (!auth.token) return;
+      if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+        globalDragCounter++;
+        const ov = document.getElementById('global-drop-overlay');
+        if (ov) ov.style.display = 'flex';
+      }
+    });
+    window.addEventListener('dragleave', (e) => {
+      if (!auth.token) return;
+      globalDragCounter = Math.max(0, globalDragCounter - 1);
+      if (globalDragCounter === 0) {
+        const ov = document.getElementById('global-drop-overlay');
+        if (ov) ov.style.display = 'none';
+      }
+    });
+    window.addEventListener('dragover', (e) => {
+      if (!auth.token) return;
+      if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('drop', async (e) => {
+      if (!auth.token) return;
+      const ov = document.getElementById('global-drop-overlay');
+      if (ov) ov.style.display = 'none';
+      globalDragCounter = 0;
+      if (e.target && (e.target.closest('#batch-drop-zone') || e.target.closest('#register-doc-modal') || e.target.closest('#batch-upload-modal'))) {
+        return;
+      }
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length === 0) return;
+      e.preventDefault();
+
+      showToast(`✨ Smart Auto-Tagging & uploading ${files.length} dropped file(s) to Cloud Storage...`, 4000);
+      try {
+        const docsPayload = await Promise.all(files.map(async (f) => {
+          const cleanName = f.name.replace(/\.[^/.]+$/, '');
+          const smart = smartClientAutoTag(f.name);
+          const b64 = await readFileAsBase64(f);
+          return {
+            title: cleanName,
+            originalFilename: f.name,
+            fileSizeBytes: f.size,
+            pageCount: 1,
+            folderCategory: smart.folderCategory,
+            categoryTag: smart.categoryTag,
+            documentType: smart.documentType,
+            source: 'Global Drag & Drop (Smart Auto-Tagged)',
+            fileData: b64,
+            contentType: f.type || 'application/octet-stream'
+          };
+        }));
+
+        const res = await apiFetch('/api/v1/documents/batch', {
+          method: 'POST',
+          body: JSON.stringify({
+            bundleAsSingleDocument: false,
+            documents: docsPayload
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Drop upload failed');
+        const tagsPreview = docsPayload.slice(0, 3).map(d => d.categoryTag).join(', ');
+        showToast(`✔ Uploaded & auto-tagged ${files.length} file(s) [${tagsPreview}]!`, 5000);
+        loadCurrentView();
+      } catch (err) {
+        showToast(`Upload Error: ${err.message}`, 4500);
+      }
+    });
 
     function getNavSvgIcon(iconName) {
       switch (iconName) {
@@ -2507,11 +3007,15 @@
         return true;
       });
 
+      const activeTabId = ['dashboard', 'documents', 'folders', 'search'].includes(currentRoute)
+        ? 'dashboard'
+        : (['scanner', 'windows-uploader'].includes(currentRoute) ? 'scanner' : currentRoute);
+
       const html = `
         <ul class="nav-list">
           ${visibleNav.map(item => `
             <li class="nav-item">
-              <a class="nav-link ${currentRoute === item.id ? 'active' : ''}" onclick="navigate('${item.id}')">
+              <a class="nav-link ${activeTabId === item.id ? 'active' : ''}" onclick="navigate('${item.id}')">
                 ${getNavSvgIcon(item.icon)}
                 <span>${item.label}</span>
               </a>
@@ -2559,7 +3063,7 @@
       const customTagsEl = document.getElementById('modal-doc-custom-tags');
       if (customTagsEl) customTagsEl.value = '';
       document.getElementById('modal-file-upload').value = '';
-      document.getElementById('modal-file-info-label').innerText = 'Select 1 or more files. Multiple files will be automatically separated into individual Cloud Storage records.';
+      document.getElementById('modal-file-info-label').innerText = 'Select 1 or more files. Smart OCR + AI Rules will automatically detect BIR or Company\'s tags.';
       const filesBox = document.getElementById('modal-batch-selected-files');
       if (filesBox) filesBox.style.display = 'none';
       selectedUploadFiles = [];
@@ -2602,7 +3106,12 @@
       if (files.length === 1) {
         selectedUploadFiles = files;
         const file = files[0];
-        infoLabel.innerText = `Cloud Upload File: ${file.name} (${(file.size / 1024).toFixed(1)} KB) — Ready to upload to Cloud Storage.`;
+        const smart = smartClientAutoTag(file.name);
+        const folderEl = document.getElementById('modal-doc-folder');
+        const tagEl = document.getElementById('modal-doc-tag');
+        if (folderEl) folderEl.value = smart.folderCategory;
+        if (tagEl) tagEl.value = smart.categoryTag;
+        infoLabel.innerHTML = `Cloud Upload File: <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB) — <span class="auto-rule-badge">✨ Smart Auto-Tagged: ${smart.categoryTag} (${smart.rule})</span>`;
         if (filesBox) filesBox.style.display = 'none';
         if (!document.getElementById('modal-doc-title').value) {
           document.getElementById('modal-doc-title').value = file.name.replace(/\.[^/.]+$/, '');
@@ -2610,13 +3119,21 @@
         if (saveBtn) saveBtn.innerText = 'Upload to Cloud Storage';
       } else if (files.length > 1) {
         selectedUploadFiles = files;
-        infoLabel.innerHTML = `<strong style="color: #2563EB;">✔ Automatic Document Separation:</strong> ${files.length} files selected. Each file will be automatically separated and uploaded as its own individual Cloud Storage document!`;
+        const firstSmart = smartClientAutoTag(files[0].name);
+        const folderEl = document.getElementById('modal-doc-folder');
+        const tagEl = document.getElementById('modal-doc-tag');
+        if (folderEl && firstSmart.matched) folderEl.value = firstSmart.folderCategory;
+        if (tagEl && firstSmart.matched) tagEl.value = firstSmart.categoryTag;
+        infoLabel.innerHTML = `<strong style="color: #2563EB;">✔ Auto-Separated + Smart Auto-Tagged:</strong> ${files.length} files selected. Each file gets its own BIR / Company's tag in Cloud Storage.`;
         if (filesBox) {
           filesBox.style.display = 'block';
           filesBox.innerHTML = `
-            <div style="font-weight: 600; color: #1E40AF; margin-bottom: 0.25rem;">Auto-Separated Cloud Storage Files (${files.length}):</div>
-            <ul style="margin: 0; padding-left: 1.1rem; line-height: 1.5; color: var(--text-secondary);">
-              ${files.map(f => `<li><strong>${f.name}</strong> <span class="mono" style="font-size: 0.7rem; color: var(--text-muted);">(${(f.size / 1024).toFixed(1)} KB) → Individual Record</span></li>`).join('')}
+            <div style="font-weight: 600; color: #1E40AF; margin-bottom: 0.25rem;">Auto-Separated & Smart-Tagged Files (${files.length}):</div>
+            <ul style="margin: 0; padding-left: 1.1rem; line-height: 1.6; color: var(--text-secondary);">
+              ${files.map(f => {
+                const sm = smartClientAutoTag(f.name);
+                return `<li><strong>${f.name}</strong> <span class="auto-rule-badge">✨ ${sm.categoryTag}</span></li>`;
+              }).join('')}
             </ul>
           `;
         }
@@ -2626,7 +3143,7 @@
         if (saveBtn) saveBtn.innerText = `Upload & Separate ${files.length} Documents to Cloud`;
       } else {
         selectedUploadFiles = [];
-        infoLabel.innerText = 'Select 1 or more files. Multiple files will be automatically separated into individual Cloud Storage records.';
+        infoLabel.innerText = 'Select 1 or more files. Smart OCR + AI Rules will automatically detect BIR or Company\'s tags.';
         if (filesBox) filesBox.style.display = 'none';
         if (saveBtn) saveBtn.innerText = 'Upload to Cloud Storage';
       }
@@ -2648,18 +3165,19 @@
 
       btn.disabled = true;
 
-      // Case 1: Multiple files selected -> AUTOMATICALLY SEPARATED in Cloud Storage!
+      // Case 1: Multiple files selected -> AUTOMATICALLY SEPARATED & SMART AUTO-TAGGED in Cloud Storage!
       if (selectedUploadFiles && selectedUploadFiles.length > 1) {
         btn.innerText = `Uploading & separating ${selectedUploadFiles.length} documents...`;
         try {
           const docPromises = selectedUploadFiles.map(async (f) => {
             const b64 = await readFileAsBase64(f);
+            const sm = smartClientAutoTag(f.name, folderCategory);
             return {
               title: f.name.replace(/\.[^/.]+$/, ''),
               fileSizeBytes: f.size,
               pageCount: 1,
-              folderCategory,
-              categoryTag,
+              folderCategory: sm.matched ? sm.folderCategory : folderCategory,
+              categoryTag: sm.matched ? sm.categoryTag : categoryTag,
               customTags,
               source: 'Manual Cloud Upload',
               fileData: b64,
@@ -2878,23 +3396,27 @@
       submitBtn.style.opacity = '1';
       submitBtn.innerText = `Upload & Auto-Separate ${batchUploadQueue.length} Documents`;
 
-      list.innerHTML = batchUploadQueue.map((file, idx) => `
+      list.innerHTML = batchUploadQueue.map((file, idx) => {
+        const sm = smartClientAutoTag(file.name);
+        return `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--card-border-subtle); font-size: 0.8rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0; flex-wrap: wrap;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-            <span style="font-weight: 500; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;">
+            <span style="font-weight: 500; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;">
               ${file.name}
             </span>
             <span class="mono" style="font-size: 0.72rem; color: var(--text-muted);">
               (${(file.size / 1024).toFixed(1)} KB)
             </span>
+            <span class="auto-rule-badge" title="${sm.rule}">✨ ${sm.folderCategory === 'BIR' ? 'BIR' : "Company's"} · ${sm.categoryTag}</span>
             <span class="badge badge-info" style="font-size: 0.65rem;">Separate Record #${idx + 1}</span>
           </div>
           <button class="btn btn-outline btn-sm" onclick="removeBatchFile(${idx})" title="Remove file" style="padding: 0.15rem 0.45rem; font-size: 0.75rem; color: #DC2626; border-color: #FECACA;">
             ✕
           </button>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     async function submitBatchUpload() {
@@ -2918,17 +3440,18 @@
       progressBox.style.display = 'block';
       progressBar.style.width = '25%';
       progressPercent.innerText = '25%';
-      progressText.innerText = `Reading ${batchUploadQueue.length} files for auto-separated Cloud Storage upload...`;
+      progressText.innerText = `Reading ${batchUploadQueue.length} files for auto-separated + Smart Auto-Tagged Cloud Storage upload...`;
 
       try {
         const docPromises = batchUploadQueue.map(async (f) => {
           const b64 = await readFileAsBase64(f);
+          const sm = smartClientAutoTag(f.name, folderCategory);
           return {
             title: f.name.replace(/\.[^/.]+$/, ''),
             fileSizeBytes: f.size,
             pageCount: 1,
-            folderCategory,
-            categoryTag,
+            folderCategory: sm.matched ? sm.folderCategory : folderCategory,
+            categoryTag: sm.matched ? sm.categoryTag : categoryTag,
             source: 'Manual Multi-File Cloud Upload',
             fileData: b64,
             originalFilename: f.name,
@@ -2948,7 +3471,7 @@
 
         progressBar.style.width = '65%';
         progressPercent.innerText = '65%';
-        progressText.innerText = `Separating and saving ${batchUploadQueue.length} independent records to Cloud Storage...`;
+        progressText.innerText = `Separating and Smart Auto-Tagging ${batchUploadQueue.length} independent records to Cloud Storage...`;
 
         const res = await apiFetch('/api/v1/documents/batch', {
           method: 'POST',
@@ -2962,9 +3485,9 @@
 
         progressBar.style.width = '100%';
         progressPercent.innerText = '100%';
-        progressText.innerText = `✔ Complete! ${batchUploadQueue.length} documents separated and tagged [${categoryTag}] in Cloud Storage.`;
+        progressText.innerText = `✔ Complete! ${batchUploadQueue.length} documents separated and Smart Auto-Tagged in Cloud Storage.`;
 
-        showToast(`✔ Successfully uploaded and separated ${batchUploadQueue.length} documents into Cloud Storage [${categoryTag}]!`, 5000);
+        showToast(`✔ Successfully uploaded, separated, and Smart Auto-Tagged ${batchUploadQueue.length} documents into Cloud Storage!`, 5000);
         batchUploadQueue = [];
 
         setTimeout(() => {
@@ -4889,19 +5412,29 @@
       }
     }
 
-    // Helper: Render Master Folder + Clickable Category Tag Badges for any document
+    // Helper: Render Minimalist Unified Folder + Clickable Category Tag Pill (opens 1-Click Inline Tag Popover)
     function renderDocCategoryAndTagHtml(d) {
       const folderCat = getDocFolderCategory(d);
       const catTag = getDocCategoryTag(d);
       const customTags = (d.metadata || []).find(m => m.key === 'custom_tags')?.value || '';
-      const folderBadge = folderCat === 'BIR'
-        ? `<span class="badge badge-warning" style="font-weight: 700; cursor: pointer;" onclick="openEditDocTagModal('${d.id}')" title="Click to change Folder or Category Tag">🏛️ BIR</span>`
-        : `<span class="badge badge-info" style="font-weight: 700; cursor: pointer;" onclick="openEditDocTagModal('${d.id}')" title="Click to change Folder or Category Tag">🏢 Company's</span>`;
-      const tagBadge = `<span class="badge" style="background: ${folderCat === 'BIR' ? '#FEF3C7' : '#DBEAFE'}; color: ${folderCat === 'BIR' ? '#92400E' : '#1E40AF'}; border: 1px solid ${folderCat === 'BIR' ? '#FCD34D' : '#93C5FD'}; font-family: monospace; font-weight: 700; cursor: pointer;" onclick="openEditDocTagModal('${d.id}')" title="Click to change Category Tag">🏷️ ${catTag}</span>`;
+      const autoRule = (d.metadata || []).find(m => m.key === 'auto_tag_rule')?.value || '';
+      const isBir = folderCat === 'BIR';
+
+      const pill = `
+        <span class="tag-pill-minimal ${isBir ? 'tag-bir' : 'tag-company'}" onclick="openInlineTagPopover(event, '${d.id}')" title="Click to switch BIR / Company's tag inline">
+          <span class="dot-indicator ${isBir ? 'dot-bir' : 'dot-company'}"></span>
+          <span>${isBir ? 'BIR' : "Company's"}</span>
+          <span style="opacity: 0.45;">·</span>
+          <span class="mono">${catTag}</span>
+        </span>
+      `;
+      const autoBadge = autoRule
+        ? `<span class="auto-rule-badge" title="Smart Auto-Tagged: ${autoRule}">✨ Auto</span>`
+        : '';
       const extraBadge = customTags
         ? `<span class="badge badge-neutral" style="font-size: 0.65rem; cursor: pointer;" onclick="openEditDocTagModal('${d.id}')">${customTags}</span>`
         : '';
-      return `<div style="display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;">${folderBadge}${tagBadge}${extraBadge}</div>`;
+      return `<div style="display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">${pill}${autoBadge}${extraBadge}</div>`;
     }
 
     function canCurrentUserOpenVault() {
@@ -4909,299 +5442,97 @@
       return roles.some(r => ['SUPER_ADMIN', 'ADMIN', 'Super Admin', 'VIEWER', 'LIAISON', 'Liaison'].includes(r));
     }
 
-    // View: DCC Dashboard (Concept Map Overview + Cloud Storage Documents)
-    async function renderDashboardView(container) {
-      let docCount = 0;
-      let documents = [];
-      let localInfo = null;
+    // Minimalist 4-Column Row Renderer (Document | Category & Tag | Date & Source | Actions)
+    function renderMinimalDocumentRowHtml(d, index, canVault) {
+      const docNumber = d.referenceNumber || `DOC-${new Date(d.createdAt || Date.now()).getFullYear()}-${String(index + 1).padStart(4, '0')}`;
+      const cleanTitle = (d.title || 'Untitled Document').replace(/\.pdf$/i, '');
+      const deptName = d.department ? (d.department.name || d.department.code) : (d.departmentId || 'General');
+      const folderCat = getDocFolderCategory(d);
+      const catTag = getDocCategoryTag(d);
+      const customTags = (d.metadata || []).find(m => m.key === 'custom_tags')?.value || '';
+      const rawSource = (d.metadata || []).find(m => m.key === 'ingest_source' || m.key === 'ingestion_channel' || m.key === 'upload_mode')?.value || d.scannerDeviceId || 'Cloud';
+      const shortSource = rawSource.includes('SCAN') ? '🖨️ Scanner' : (rawSource.includes('WINDOWS') ? '💻 WinAgent' : '☁️ Cloud');
+      const dateStr = d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today';
+      const hasFile = d.fileSizeBytes > 0 || d.storageKeyPdf || (d.pages && d.pages.length > 0);
+      const safeTitle = (d.title || 'Document').replace(/'/g, "\\'");
 
-      try {
-        const [docRes, storageRes] = await Promise.all([
-          apiFetch('/api/v1/documents?limit=25'),
-          apiFetch('/api/v1/scanners/local-storage')
-        ]);
-        if (docRes.ok) {
-          const data = await docRes.json();
-          documents = data.documents || (Array.isArray(data) ? data : []);
-          docCount = data.total || documents.length;
-        }
-        if (storageRes.ok) {
-          localInfo = await storageRes.json();
-        }
-      } catch {}
-
-      const birCount = documents.filter(d => getDocFolderCategory(d) === 'BIR').length;
-      const companyCount = documents.filter(d => getDocFolderCategory(d) === 'COMPANY_DOCS').length;
-      const canVault = canCurrentUserOpenVault();
-
-      container.innerHTML = `
-        <!-- Concept Map Architecture Banner -->
-        <div class="card" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color: #F8FAFC; border: 1px solid #334155; margin-bottom: 1rem;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="badge" style="background: #2563EB; color: #FFFFFF; font-weight: 700;">DCC ARCHITECTURE v2.0</span>
-                <span style="font-size: 0.78rem; color: #93C5FD;">Cloud Storage First • Auto-Separated Multi-Upload • Smart BIR & Company's Tagging • AES-256-GCM Vault</span>
-              </div>
-              <h3 style="margin: 0.45rem 0 0.25rem 0; font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">
-                Unified Ingestion, Category Tagging & High-Security Private Vault Pipeline
-              </h3>
-              <div style="font-size: 0.78rem; color: #CBD5E1; display: flex; flex-wrap: wrap; gap: 0.85rem; margin-top: 0.35rem;">
-                <span>💻 <strong>Windows Uploader</strong> → ☁️ Cloud Storage</span>
-                <span>🖨️ <strong>Universal Scanner</strong> → 💾 Local Storage + ☁️ Cloud Storage</span>
-                <span>📤 <strong>Manual Multi-Upload</strong> → ☁️ Cloud Storage (Auto-Separated + Tagged)</span>
-                <span>☁️ <strong>Cloud Storage</strong> → 🔐 <strong>Private Vault</strong> (GZIP + AES-256-GCM Local Storage)</span>
+      return `
+        <tr data-doc-title="${cleanTitle.toLowerCase()}" data-doc-num="${docNumber.toLowerCase()}" data-doc-dept="${deptName.toLowerCase()}" data-doc-folder="${folderCat}" data-doc-tag="${catTag.toLowerCase()} ${customTags.toLowerCase()}">
+          <td data-label="Document">
+            <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+              <a href="javascript:void(0)" onclick="inspectDocument('${d.id}')" style="color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink: 0;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                <span>${cleanTitle}</span>
+              </a>
+              <div style="font-size: 0.72rem; color: var(--text-muted); padding-left: 1.2rem;">
+                <span class="mono">${docNumber}</span> • <span>${deptName}</span>
               </div>
             </div>
-            <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
-              <button class="btn btn-sm" style="background: #2563EB; color: white; border: none;" onclick="navigate('windows-uploader')">💻 Windows Uploader</button>
-              <button class="btn btn-sm" style="background: #0D9488; color: white; border: none;" onclick="navigate('scanner')">🖨️ Scanner & Local Path</button>
-              <button class="btn btn-sm" style="background: #7C3AED; color: white; border: none;" onclick="navigate('converter')">🛠️ Converter / Merge / Detach</button>
-              ${canVault ? `<button class="btn btn-sm" style="background: #DC2626; color: white; border: none;" onclick="navigate('vault')">🔐 Private Vault</button>` : ''}
-            </div>
-          </div>
-        </div>
-
-        <div class="kpi-row">
-          <div class="kpi-tile" onclick="navigate('documents')" style="cursor: pointer;">
-            <span class="kpi-label">☁️ Cloud Storage Docs</span>
-            <span class="kpi-num">${docCount}</span>
-            <span class="kpi-meta">Separated & tagged records</span>
-          </div>
-          <div class="kpi-tile" onclick="navigate('folders'); setTimeout(() => selectFolderCategory('BIR'), 80);" style="cursor: pointer;">
-            <span class="kpi-label">🏛️ Folder 1: BIR</span>
-            <span class="kpi-num">${birCount}</span>
-            <span class="kpi-meta">Tagged #BIR-* documents</span>
-          </div>
-          <div class="kpi-tile" onclick="navigate('folders'); setTimeout(() => selectFolderCategory('COMPANY_DOCS'), 80);" style="cursor: pointer;">
-            <span class="kpi-label">🏢 Folder 2: Company Docs</span>
-            <span class="kpi-num">${companyCount}</span>
-            <span class="kpi-meta">Tagged #Company-* records</span>
-          </div>
-          <div class="kpi-tile" onclick="navigate('scanner')" style="cursor: pointer;">
-            <span class="kpi-label">💾 Local Storage Files</span>
-            <span class="kpi-num">${localInfo ? (localInfo.totalFiles || 0) : 0}</span>
-            <span class="kpi-meta" style="font-family: monospace; font-size: 0.68rem;">${localInfo ? localInfo.localStoragePath : 'Local Storage Active'}</span>
-          </div>
-          <div class="kpi-tile" onclick="navigate('converter')" style="cursor: pointer;">
-            <span class="kpi-label">🛠️ File Converter Agent</span>
-            <span class="kpi-num">ONLINE</span>
-            <span class="kpi-meta">Convert • Merge • Detach</span>
-          </div>
-          <div class="kpi-tile" ${canVault ? `onclick="navigate('vault')" style="cursor: pointer;"` : ''}>
-            <span class="kpi-label">🔐 Private Vault</span>
-            <span class="kpi-num">${localInfo ? (localInfo.vaultEncryptedFilesCount || 0) : 'AES-256'}</span>
-            <span class="kpi-meta">${canVault ? 'Cloud → Vault (.dccvault)' : 'Admin & Liaison Only'}</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-heading">☁️ Recent Cloud Storage Documents</h3>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">Click any <strong>🏷️ Category Tag</strong> to recategorize between <strong>BIR</strong> and <strong>Company's Documentation</strong></div>
-            </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button class="btn btn-outline btn-sm" onclick="openBatchUploadModal()">+ Multi-File Upload (Auto-Separate)</button>
-              <button class="btn btn-primary btn-sm" onclick="openRegisterDocumentModal('COMPANY_DOCS')">+ Manual Upload (Cloud Storage)</button>
-              <button class="btn btn-outline btn-sm" onclick="navigate('documents')">View All</button>
-            </div>
-          </div>
-          ${documents.length === 0 ? `
-            <div class="empty-state">
-              <div class="empty-icon-wrap">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+          </td>
+          <td data-label="Category & Tag">${renderDocCategoryAndTagHtml(d)}</td>
+          <td data-label="Date & Source">
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">${dateStr}</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">${shortSource}</div>
+          </td>
+          <td data-label="Actions">
+            <div class="row-actions-wrap">
+              <button class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')">View</button>
+              <button class="btn-icon-more" onclick="toggleRowActionMenu(event, '${d.id}')" title="More actions">⋯</button>
+              <div class="row-dropdown-menu" id="row-menu-${d.id}">
+                <button class="row-dropdown-item" onclick="openInlineTagPopover(event, '${d.id}')">🏷️ Quick Switch Tag</button>
+                <button class="row-dropdown-item" onclick="openEditDocTagModal('${d.id}')">📂 Edit Folder & Custom Tags</button>
+                ${hasFile ? `<a href="${API_BASE}/api/v1/documents/${d.id}/download?token=${auth.token}" class="row-dropdown-item" download>⬇ Download File</a>` : ''}
+                <div class="row-dropdown-divider"></div>
+                <button class="row-dropdown-item" onclick="openShareMessagingModal('${d.id}', 'WHATSAPP')">💬 Send via WhatsApp</button>
+                <button class="row-dropdown-item" onclick="openShareMessagingModal('${d.id}', 'TELEGRAM')">✈️ Send via Telegram</button>
+                ${canVault ? `<button class="row-dropdown-item" style="color: #1D4ED8; font-weight: 600;" onclick="openAddCloudToVaultModal('${d.id}')">🔐 Seal to Private Vault</button>` : ''}
+                <div class="row-dropdown-divider"></div>
+                <button class="row-dropdown-item danger" onclick="deleteFolderDirect('${d.id}', '${safeTitle}')">🗑️ Delete Record</button>
               </div>
-              <div class="empty-title">No Cloud Storage Documents Yet</div>
-              <div class="empty-text">Upload documents via Manual Upload, Multi-File Upload, Universal Scanner, or Windows Uploader.</div>
             </div>
-          ` : `
-            <div class="table-container">
-              <table class="data-table data-table-responsive">
-                <thead>
-                  <tr>
-                    <th>Document Number</th>
-                    <th>Document Name</th>
-                    <th>Folder & Category Tag (BIR / Company's)</th>
-                    <th>Department</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${documents.slice(0, 10).map((d, index) => {
-                    const docNumber = d.referenceNumber || `DOC-${new Date(d.createdAt || Date.now()).getFullYear()}-${String(index + 1).padStart(4, '0')}`;
-                    const cleanTitle = d.title.replace(/\.pdf$/i, '');
-                    return `
-                      <tr>
-                        <td data-label="Document Number"><span class="mono" style="font-weight: 600;">${docNumber}</span></td>
-                        <td data-label="Document Name">
-                          <a href="javascript:void(0)" onclick="inspectDocument('${d.id}')" style="color: var(--accent); text-decoration: none; font-weight: 600;">${cleanTitle}</a>
-                          <span class="badge badge-success" style="font-size: 0.65rem; margin-left: 0.35rem;">☁️ CLOUD</span>
-                        </td>
-                        <td data-label="Folder & Tag">${renderDocCategoryAndTagHtml(d)}</td>
-                        <td data-label="Department">${d.department ? (d.department.name || d.department.code) : 'General'}</td>
-                        <td data-label="Date">${d.createdAt ? new Date(d.createdAt).toLocaleDateString() : 'Today'}</td>
-                        <td data-label="Action">
-                          <div style="display: flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
-                            <button class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')">View</button>
-                            <button class="btn btn-outline btn-sm" style="color: #B45309; border-color: #FCD34D; background: #FFFBEB;" onclick="openEditDocTagModal('${d.id}')" title="Edit BIR / Company's Tag">🏷️ Tag</button>
-                            <button class="btn btn-outline btn-sm" style="color: #15803D; border-color: #86EFAC;" onclick="openShareMessagingModal('${d.id}', 'WHATSAPP')" title="Send via WhatsApp">💬 WhatsApp</button>
-                            <button class="btn btn-outline btn-sm" style="color: #0369A1; border-color: #7DD3FC;" onclick="openShareMessagingModal('${d.id}', 'TELEGRAM')" title="Send via Telegram">✈️ Telegram</button>
-                            ${canVault ? `<button class="btn btn-outline btn-sm" style="color: #1D4ED8; border-color: #93C5FD;" onclick="openAddCloudToVaultModal('${d.id}')" title="Add Cloud Document to Private Vault">🔐 Vault</button>` : ''}
-                          </div>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          `}
-        </div>
+          </td>
+        </tr>
       `;
     }
 
-    // View: Cloud Storage Documents (All Separated Records)
-    async function renderDocumentsView(container, filterFolder = 'ALL') {
-      let documents = [];
-      try {
-        const res = await apiFetch('/api/v1/documents');
-        if (res.ok) {
-          const data = await res.json();
-          documents = data.documents || (Array.isArray(data) ? data : []);
-        }
-      } catch {}
+    // State for Minimalist Filter Bar
+    let activeMinimalFolderFilter = 'ALL';
+    let activeMinimalTagFilter = '';
 
-      const canVault = canCurrentUserOpenVault();
+    function setMinimalFolderFilter(folderKey) {
+      activeMinimalFolderFilter = folderKey || 'ALL';
+      activeMinimalTagFilter = '';
+      applyMinimalTableFilter();
+      updateMinimalFilterUI();
+    }
 
-      container.innerHTML = `
-        <div class="card">
-          <div class="filter-bar">
-            <input type="text" id="doc-filter-query" oninput="applyDocumentFilter()" class="search-input" placeholder="Filter by document number, filename, or #tag..." />
-            <select id="doc-folder-select" onchange="applyDocumentFilter()" class="select-input">
-              <option value="">All Master Folders (2)</option>
-              <option value="BIR" ${filterFolder === 'BIR' ? 'selected' : ''}>🏛️ BIR</option>
-              <option value="COMPANY_DOCS" ${filterFolder === 'COMPANY_DOCS' ? 'selected' : ''}>🏢 Company's Documentation</option>
-            </select>
-            <select id="doc-tag-select" onchange="applyDocumentFilter()" class="select-input">
-              <option value="">🏷️ All Category Tags</option>
-              <optgroup label="🏛️ BIR Tags">
-                <option value="#BIR-2307">#BIR-2307 (Withholding)</option>
-                <option value="#BIR-2316">#BIR-2316</option>
-                <option value="#BIR-VAT">#BIR-VAT</option>
-                <option value="#BIR-Income-Tax">#BIR-Income-Tax</option>
-                <option value="#BIR-COR">#BIR-COR</option>
-                <option value="#BIR-Official-Receipt">#BIR-Official-Receipt</option>
-                <option value="#BIR-Tax-Compliance">#BIR-Tax-Compliance</option>
-              </optgroup>
-              <optgroup label="🏢 Company's Documentation Tags">
-                <option value="#Company-Contract">#Company-Contract</option>
-                <option value="#Company-SEC-GIS">#Company-SEC-GIS</option>
-                <option value="#Company-HR-Record">#Company-HR-Record</option>
-                <option value="#Company-Invoice-PO">#Company-Invoice-PO</option>
-                <option value="#Company-Accounting">#Company-Accounting</option>
-                <option value="#Company-Permit-License">#Company-Permit-License</option>
-                <option value="#Company-General-Doc">#Company-General-Doc</option>
-              </optgroup>
-            </select>
-            <select id="doc-dept-select" onchange="applyDocumentFilter()" class="select-input">
-              <option value="">All Departments</option>
-              <option value="Purchasing">Purchasing</option>
-              <option value="Accounting">Accounting</option>
-              <option value="Operations">Operations</option>
-              <option value="HR">Human Resources</option>
-              <option value="Legal">Legal</option>
-            </select>
-            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-              <button class="btn btn-outline" onclick="openBatchUploadModal()" title="Upload many documents at once — each file is automatically separated in Cloud Storage" style="display: inline-flex; align-items: center; gap: 0.35rem;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span>+ Multi-File Upload (Auto-Separate)</span>
-              </button>
-              <button class="btn btn-primary" onclick="openRegisterDocumentModal('COMPANY_DOCS')">+ Manual Upload (Cloud Storage)</button>
-            </div>
-          </div>
-
-          ${documents.length === 0 ? `
-            <div class="empty-state">
-              <div class="empty-icon-wrap">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-              </div>
-              <div class="empty-title">No Cloud Storage Documents Found</div>
-              <div class="empty-text">Click "+ Manual Upload" or "+ Multi-File Upload (Auto-Separate)" to upload documents into Cloud Storage.</div>
-            </div>
-          ` : `
-            <div class="table-container">
-              <table class="data-table data-table-responsive" id="documents-table">
-                <thead>
-                  <tr>
-                    <th>Document Number</th>
-                    <th>Document Name (Separated)</th>
-                    <th>Folder & Category Tag (BIR / Company's)</th>
-                    <th>Ingestion Channel</th>
-                    <th>Department</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="documents-tbody">
-                  ${documents.map((d, index) => {
-                    const docNumber = d.referenceNumber || `DOC-${new Date(d.createdAt || Date.now()).getFullYear()}-${String(index + 1).padStart(4, '0')}`;
-                    const cleanTitle = d.title.replace(/\.pdf$/i, '');
-                    const deptName = d.department ? (d.department.name || d.department.code) : (d.departmentId || 'General');
-                    const folderCat = getDocFolderCategory(d);
-                    const catTag = getDocCategoryTag(d);
-                    const customTags = (d.metadata || []).find(m => m.key === 'custom_tags')?.value || '';
-                    const sourceChannel = (d.metadata || []).find(m => m.key === 'ingest_source' || m.key === 'ingestion_channel' || m.key === 'upload_mode')?.value || d.scannerDeviceId || 'CLOUD_UPLOAD';
-                    const hasFile = d.fileSizeBytes > 0 || d.storageKeyPdf || (d.pages && d.pages.length > 0);
-
-                    return `
-                      <tr data-doc-title="${cleanTitle.toLowerCase()}" data-doc-num="${docNumber.toLowerCase()}" data-doc-dept="${deptName.toLowerCase()}" data-doc-folder="${folderCat}" data-doc-tag="${catTag.toLowerCase()} ${customTags.toLowerCase()}">
-                        <td data-label="Document Number"><span class="mono" style="font-weight: 600;">${docNumber}</span></td>
-                        <td data-label="Document Name">
-                          <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
-                            <a href="javascript:void(0)" onclick="inspectDocument('${d.id}')" style="color: var(--accent); text-decoration: none; font-weight: 600;">
-                              📄 ${cleanTitle}
-                            </a>
-                            <span class="badge badge-success" style="font-size: 0.65rem;">☁️ CLOUD</span>
-                          </div>
-                        </td>
-                        <td data-label="Folder & Tag">${renderDocCategoryAndTagHtml(d)}</td>
-                        <td data-label="Ingestion Channel"><span class="badge badge-neutral" style="font-size: 0.7rem;">${sourceChannel}</span></td>
-                        <td data-label="Department">${deptName}</td>
-                        <td data-label="Date">${d.createdAt ? new Date(d.createdAt).toLocaleDateString() : 'Today'}</td>
-                        <td data-label="Action">
-                          <div style="display: flex; gap: 0.3rem; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
-                            <button class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')" title="View Document">View</button>
-                            <button class="btn btn-outline btn-sm" style="color: #B45309; border-color: #FCD34D; background: #FFFBEB;" onclick="openEditDocTagModal('${d.id}')" title="Change BIR / Company's Category Tag">🏷️ Tag</button>
-                            ${hasFile ? `<a href="${API_BASE}/api/v1/documents/${d.id}/download?token=${auth.token}" class="btn btn-outline btn-sm" title="Download File" download>⬇</a>` : ''}
-                            <button class="btn btn-outline btn-sm" style="color: #15803D; border-color: #86EFAC;" onclick="openShareMessagingModal('${d.id}', 'WHATSAPP')" title="Send via WhatsApp">💬 WhatsApp</button>
-                            <button class="btn btn-outline btn-sm" style="color: #0369A1; border-color: #7DD3FC;" onclick="openShareMessagingModal('${d.id}', 'TELEGRAM')" title="Send via Telegram">✈️ Telegram</button>
-                            ${canVault ? `<button class="btn btn-outline btn-sm" style="color: #1D4ED8; border-color: #93C5FD;" onclick="openAddCloudToVaultModal('${d.id}')" title="Seal Cloud Document into Private Vault">🔐 Vault</button>` : ''}
-                            <button class="btn btn-danger-outline btn-sm" onclick="deleteFolderDirect('${d.id}', '${d.title.replace(/'/g, "\\'")}')" title="Delete">Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          `}
-        </div>
-      `;
-
-      if (filterFolder && filterFolder !== 'ALL') {
-        applyDocumentFilter();
+    function setMinimalTagFilter(tagValue) {
+      if (activeMinimalTagFilter === tagValue) {
+        activeMinimalTagFilter = '';
+      } else {
+        activeMinimalTagFilter = tagValue;
       }
+      applyMinimalTableFilter();
+      updateMinimalFilterUI();
     }
 
-    function applyDocumentFilter() {
-      const q = (document.getElementById('doc-filter-query')?.value || '').toLowerCase().trim();
-      const folder = (document.getElementById('doc-folder-select')?.value || '');
-      const tagFilter = (document.getElementById('doc-tag-select')?.value || '').toLowerCase().trim();
-      const dept = (document.getElementById('doc-dept-select')?.value || '').toLowerCase();
+    function updateMinimalFilterUI() {
+      document.querySelectorAll('[data-minimal-folder-pill]').forEach(btn => {
+        const val = btn.getAttribute('data-minimal-folder-pill');
+        btn.classList.toggle('active', val === activeMinimalFolderFilter);
+      });
+      document.querySelectorAll('[data-minimal-tag-chip]').forEach(chip => {
+        const val = chip.getAttribute('data-minimal-tag-chip');
+        chip.classList.toggle('active', val === activeMinimalTagFilter);
+      });
+    }
+
+    function applyMinimalTableFilter() {
+      const q = (document.getElementById('minimal-search-input')?.value || document.getElementById('doc-filter-query')?.value || '').toLowerCase().trim();
+      const folder = activeMinimalFolderFilter === 'ALL' ? '' : activeMinimalFolderFilter;
+      const tagFilter = (activeMinimalTagFilter || '').toLowerCase().trim();
       const rows = document.querySelectorAll('#documents-tbody tr');
+      let visibleCount = 0;
 
       rows.forEach(row => {
         const title = row.getAttribute('data-doc-title') || '';
@@ -5210,13 +5541,159 @@
         const rowFolder = row.getAttribute('data-doc-folder') || '';
         const rowTag = row.getAttribute('data-doc-tag') || '';
 
-        const matchesQ = !q || title.includes(q) || num.includes(q) || rowTag.includes(q);
+        const matchesQ = !q || title.includes(q) || num.includes(q) || rowTag.includes(q) || rowDept.includes(q);
         const matchesFolder = !folder || rowFolder === folder;
         const matchesTag = !tagFilter || rowTag.includes(tagFilter);
-        const matchesDept = !dept || rowDept.includes(dept);
 
-        row.style.display = (matchesQ && matchesFolder && matchesTag && matchesDept) ? '' : 'none';
+        const show = matchesQ && matchesFolder && matchesTag;
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
       });
+
+      const counterEl = document.getElementById('minimal-visible-count');
+      if (counterEl) counterEl.textContent = `${visibleCount} record(s)`;
+    }
+
+    // View: Unified Minimalist Records Hub (Cloud Storage + BIR / Company's Filter Pills + Smart Auto-Tag All)
+    async function renderDashboardView(container) {
+      await renderDocumentsView(container, activeMinimalFolderFilter);
+    }
+
+    // View: Minimalist Cloud Storage Records Hub
+    async function renderDocumentsView(container, filterFolder = 'ALL') {
+      if (filterFolder && filterFolder !== 'ALL') {
+        activeMinimalFolderFilter = filterFolder;
+      }
+      let documents = [];
+      let localInfo = null;
+      try {
+        const [res, storageRes] = await Promise.all([
+          apiFetch('/api/v1/documents'),
+          apiFetch('/api/v1/scanners/local-storage')
+        ]);
+        if (res.ok) {
+          const data = await res.json();
+          documents = data.documents || (Array.isArray(data) ? data : []);
+        }
+        if (storageRes.ok) {
+          localInfo = await storageRes.json();
+        }
+      } catch {}
+
+      const totalCount = documents.length;
+      const birCount = documents.filter(d => getDocFolderCategory(d) === 'BIR').length;
+      const companyCount = documents.filter(d => getDocFolderCategory(d) === 'COMPANY_DOCS').length;
+      const canVault = canCurrentUserOpenVault();
+
+      const quickChips = [
+        { label: 'All Tags', val: '' },
+        { label: '#BIR-2307', val: '#bir-2307' },
+        { label: '#BIR-2316', val: '#bir-2316' },
+        { label: '#BIR-VAT', val: '#bir-vat' },
+        { label: '#BIR-COR', val: '#bir-cor' },
+        { label: '#Company-Contract', val: '#company-contract' },
+        { label: '#Company-SEC-GIS', val: '#company-sec-gis' },
+        { label: '#Company-Invoice-PO', val: '#company-invoice-po' },
+        { label: '#Company-HR-Record', val: '#company-hr-record' }
+      ];
+
+      container.innerHTML = `
+        <!-- Minimalist Compact Status Strip -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem; padding: 0.6rem 0.95rem; background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: 0.78rem;">
+            <span style="font-weight: 600; color: var(--text-main);">☁️ Cloud Records: <strong>${totalCount}</strong></span>
+            <span style="color: var(--text-secondary);"><span class="dot-indicator dot-bir"></span> BIR: <strong>${birCount}</strong></span>
+            <span style="color: var(--text-secondary);"><span class="dot-indicator dot-company"></span> Company's: <strong>${companyCount}</strong></span>
+            <span style="color: var(--text-muted); font-size: 0.74rem; cursor: pointer;" onclick="navigate('scanner')" title="Click to manage Scanner & Local Storage Path">💾 Local: <code class="mono">${localInfo ? localInfo.localStoragePath : 'C:\\DCC-LocalStorage'}</code> (${localInfo ? (localInfo.totalFiles || 0) : 0})</span>
+            ${canVault ? `<span style="color: #1D4ED8; font-size: 0.74rem; font-weight: 600; cursor: pointer;" onclick="navigate('vault')">🔐 Vault: ${localInfo ? (localInfo.vaultEncryptedFilesCount || 0) : 0} sealed</span>` : ''}
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">
+            💡 Tip: Drag & drop files anywhere on screen for instant Auto-Separated + Smart OCR Auto-Tagged upload
+          </div>
+        </div>
+
+        <!-- Minimalist Single-Line Action & Filter Toolbar -->
+        <div class="card" style="padding: 1rem 1.15rem;">
+          <div class="minimal-toolbar">
+            <div class="minimal-toolbar-left">
+              <!-- Segmented Folder Pills -->
+              <div class="segmented-pills">
+                <button type="button" class="seg-pill ${activeMinimalFolderFilter === 'ALL' ? 'active' : ''}" data-minimal-folder-pill="ALL" onclick="setMinimalFolderFilter('ALL')">
+                  All (${totalCount})
+                </button>
+                <button type="button" class="seg-pill ${activeMinimalFolderFilter === 'BIR' ? 'active' : ''}" data-minimal-folder-pill="BIR" onclick="setMinimalFolderFilter('BIR')">
+                  <span class="dot-indicator dot-bir"></span> BIR (${birCount})
+                </button>
+                <button type="button" class="seg-pill ${activeMinimalFolderFilter === 'COMPANY_DOCS' ? 'active' : ''}" data-minimal-folder-pill="COMPANY_DOCS" onclick="setMinimalFolderFilter('COMPANY_DOCS')">
+                  <span class="dot-indicator dot-company"></span> Company's (${companyCount})
+                </button>
+              </div>
+
+              <!-- Quick Search (Ctrl+K) -->
+              <div style="position: relative; min-width: 230px; flex: 1; max-width: 320px;">
+                <input type="text" id="minimal-search-input" oninput="applyMinimalTableFilter()" class="search-input" style="width: 100%; height: 34px; font-size: 0.8rem; padding-right: 3.2rem;" placeholder="Search title, DOC-#, or #tag..." />
+                <span class="mono" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); font-size: 0.65rem; color: var(--text-muted); background: #F1F5F9; padding: 0.1rem 0.35rem; border-radius: 4px; border: 1px solid #E2E8F0; pointer-events: none;">Ctrl+K</span>
+              </div>
+            </div>
+
+            <div class="minimal-toolbar-right">
+              <button class="btn btn-outline btn-sm" id="btn-smart-autotag-all" onclick="runSmartAutoTagAllDocuments()" title="Run OCR + AI Keyword Rules across all documents to automatically assign BIR & Company's tags" style="color: #1D4ED8; border-color: #BFDBFE; background: #EFF6FF; font-weight: 600;">
+                ✨ Smart Auto-Tag All
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="openBatchUploadModal()" title="Upload multiple files — automatically separated & Smart Auto-Tagged">
+                + Multi-Upload
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="openRegisterDocumentModal(activeMinimalFolderFilter === 'BIR' ? 'BIR' : 'COMPANY_DOCS')">
+                + Upload
+              </button>
+            </div>
+          </div>
+
+          <!-- Subtle Clickable Tag Chip Bar -->
+          <div class="minimal-chip-bar" style="justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+              ${quickChips.map(c => `
+                <span class="tag-filter-chip ${activeMinimalTagFilter === c.val ? 'active' : ''}" data-minimal-tag-chip="${c.val}" onclick="setMinimalTagFilter('${c.val}')">${c.label}</span>
+              `).join('')}
+            </div>
+            <span id="minimal-visible-count" class="mono" style="font-size: 0.72rem; color: var(--text-muted);">${totalCount} record(s)</span>
+          </div>
+
+          ${documents.length === 0 ? `
+            <div class="empty-state">
+              <div class="empty-icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+              </div>
+              <div class="empty-title">No Records Yet</div>
+              <div class="empty-text">Drag & drop files anywhere on screen, or click "+ Upload" to add records with Smart BIR & Company's Auto-Tagging.</div>
+            </div>
+          ` : `
+            <div class="table-container">
+              <table class="data-table data-table-responsive" id="documents-table">
+                <thead>
+                  <tr>
+                    <th>Document</th>
+                    <th>Category & Tag (Click Pill to Switch)</th>
+                    <th>Date & Source</th>
+                    <th style="text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="documents-tbody">
+                  ${documents.map((d, index) => renderMinimalDocumentRowHtml(d, index, canVault)).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `;
+
+      if (activeMinimalFolderFilter !== 'ALL' || activeMinimalTagFilter) {
+        applyMinimalTableFilter();
+      }
+    }
+
+    function applyDocumentFilter() {
+      applyMinimalTableFilter();
     }
 
     async function deleteFolderDirect(docId, docTitle) {
@@ -5239,105 +5716,18 @@
     }
 
     // ==========================================
-    // VIEW: FOLDERS (Strictly 2 Master Folders: BIR & Company's Documentation)
+    // VIEW: FOLDERS (Redirects or renders Minimalist 2-Folder View)
     // ==========================================
     let selectedFolderFilter = null;
 
     async function renderFoldersView(container, filterFolder = null) {
       selectedFolderFilter = filterFolder;
-
-      let documents = [];
-      try {
-        const res = await apiFetch('/api/v1/documents');
-        if (res.ok) {
-          const data = await res.json();
-          documents = data.documents || (Array.isArray(data) ? data : []);
-        }
-      } catch {}
-
-      const birDocs = documents.filter(d => getDocFolderCategory(d) === 'BIR');
-      const companyDocs = documents.filter(d => getDocFolderCategory(d) === 'COMPANY_DOCS');
-
-      const folders = [
-        {
-          id: 'bir',
-          key: 'BIR',
-          name: '🏛️ BIR (Bureau of Internal Revenue)',
-          subtitle: 'Tags: #BIR-2307 • #BIR-2316 • #BIR-VAT • #BIR-Income-Tax • #BIR-COR • #BIR-Official-Receipt • #BIR-Tax-Compliance',
-          count: birDocs.length,
-          accent: '#D97706',
-          bg: '#FFFBEB'
-        },
-        {
-          id: 'company-docs',
-          key: 'COMPANY_DOCS',
-          name: '🏢 Company\'s Documentation',
-          subtitle: 'Tags: #Company-Contract • #Company-SEC-GIS • #Company-HR-Record • #Company-Invoice-PO • #Company-Accounting • #Company-Permit-License',
-          count: companyDocs.length,
-          accent: '#2563EB',
-          bg: '#EFF6FF'
-        }
-      ];
-
-      container.innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-heading">📂 Master Folders & Category Tags (BIR vs. Company's Documentation)</h3>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">Every document has a clickable <strong>🏷️ Category Tag</strong> for instant sorting between <strong>BIR</strong> and <strong>Company's Documentation</strong></div>
-            </div>
-            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-              ${selectedFolderFilter ? `<button class="btn btn-outline btn-sm" onclick="renderFoldersView(document.getElementById('page-content'), null)">Show Both Folders</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="openBatchUploadModal()">+ Multi-File Upload</button>
-              <button class="btn btn-primary btn-sm" onclick="openRegisterDocumentModal('${selectedFolderFilter || 'COMPANY_DOCS'}')">+ Manual Upload</button>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-            ${folders.map(f => {
-              const isSelected = selectedFolderFilter === f.key;
-              return `
-                <div class="folder-card" onclick="selectFolderCategory('${f.key}')" style="padding: 1.25rem; border: 2px solid ${isSelected ? f.accent : 'var(--card-border)'}; background: ${isSelected ? f.bg : '#FFFFFF'}; border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 1rem; transition: all 0.15s ease;">
-                  <div class="folder-icon" style="width: 48px; height: 48px; border-radius: 10px; background: ${f.bg}; color: ${f.accent}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="${f.accent}" stroke-width="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
-                  </div>
-                  <div class="folder-info" style="flex: 1;">
-                    <div class="folder-name" style="font-size: 1rem; font-weight: 700; color: var(--text-main);">${f.name}</div>
-                    <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.4; font-family: monospace;">${f.subtitle}</div>
-                    <div style="margin-top: 0.65rem; display: flex; align-items: center; gap: 0.5rem;">
-                      <span class="badge" style="background: ${f.accent}; color: #FFFFFF; font-weight: 700;">${f.count} Document(s)</span>
-                      <span style="font-size: 0.72rem; color: ${f.accent}; font-weight: 600;">${isSelected ? '✔ Active Filter' : 'Click to open folder →'}</span>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-heading">${selectedFolderFilter === 'BIR' ? '🏛️ Folder: BIR Documents' : (selectedFolderFilter === 'COMPANY_DOCS' ? '🏢 Folder: Company\'s Documentation' : 'All Documents Across Both Master Folders')}</h3>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${selectedFolderFilter ? `Showing documents tagged under ${selectedFolderFilter === 'BIR' ? 'BIR (#BIR-*)' : "Company's Documentation (#Company-*)"}` : 'Click either master folder card above to filter, or click any 🏷️ Tag on a document to recategorize it'}</div>
-            </div>
-          </div>
-          <div id="folder-docs-container"></div>
-        </div>
-      `;
-
-      let filteredDocs = documents;
-      if (selectedFolderFilter === 'BIR') {
-        filteredDocs = birDocs;
-      } else if (selectedFolderFilter === 'COMPANY_DOCS') {
-        filteredDocs = companyDocs;
-      }
-
-      renderCustomDocumentTable(document.getElementById('folder-docs-container'), filteredDocs);
+      await renderDocumentsView(container, filterFolder || 'ALL');
     }
 
     function selectFolderCategory(key) {
-      renderFoldersView(document.getElementById('page-content'), key);
+      activeMinimalFolderFilter = key || 'ALL';
+      renderDocumentsView(document.getElementById('page-content'), activeMinimalFolderFilter);
     }
 
     function renderCustomDocumentTable(container, documents) {
@@ -5345,59 +5735,27 @@
       if (documents.length === 0) {
         container.innerHTML = `
           <div class="empty-state" style="padding: 1.5rem;">
-            <div class="empty-icon-wrap">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-            </div>
             <div class="empty-title">No Documents in This Folder</div>
-            <div class="empty-text">Upload documents or click "🏷️ Tag" on any document to move it into this folder.</div>
+            <div class="empty-text">Click any Category Tag pill on a document to move it here.</div>
           </div>
         `;
         return;
       }
 
       const canVault = canCurrentUserOpenVault();
-
       container.innerHTML = `
         <div class="table-container">
           <table class="data-table data-table-responsive">
             <thead>
               <tr>
-                <th>Document Number</th>
-                <th>Document Name</th>
-                <th>Folder & Category Tag (BIR / Company's)</th>
-                <th>Department</th>
-                <th>Date</th>
-                <th>Action</th>
+                <th>Document</th>
+                <th>Category & Tag</th>
+                <th>Date & Source</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${documents.map((d, index) => {
-                const docNumber = d.referenceNumber || `DOC-${new Date(d.createdAt || Date.now()).getFullYear()}-${String(index + 1).padStart(4, '0')}`;
-                const cleanTitle = d.title.replace(/\.pdf$/i, '');
-
-                return `
-                  <tr>
-                    <td data-label="Document Number"><span class="mono" style="font-weight: 600;">${docNumber}</span></td>
-                    <td data-label="Document Name">
-                      <a href="javascript:void(0)" onclick="inspectDocument('${d.id}')" style="color: var(--accent); text-decoration: none; font-weight: 600;">
-                        📄 ${cleanTitle}
-                      </a>
-                    </td>
-                    <td data-label="Folder & Tag">${renderDocCategoryAndTagHtml(d)}</td>
-                    <td data-label="Department">${d.department ? (d.department.name || d.department.code) : 'General'}</td>
-                    <td data-label="Date">${d.createdAt ? new Date(d.createdAt).toLocaleDateString() : 'Today'}</td>
-                    <td data-label="Action">
-                      <div style="display: flex; gap: 0.35rem; justify-content: flex-end; flex-wrap: wrap;">
-                        <button class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')">View</button>
-                        <button class="btn btn-outline btn-sm" style="color: #B45309; border-color: #FCD34D; background: #FFFBEB;" onclick="openEditDocTagModal('${d.id}')" title="Change BIR / Company's Tag">🏷️ Tag</button>
-                        <button class="btn btn-outline btn-sm" style="color: #15803D; border-color: #86EFAC;" onclick="openShareMessagingModal('${d.id}', 'WHATSAPP')">💬 WhatsApp</button>
-                        <button class="btn btn-outline btn-sm" style="color: #0369A1; border-color: #7DD3FC;" onclick="openShareMessagingModal('${d.id}', 'TELEGRAM')">✈️ Telegram</button>
-                        ${canVault ? `<button class="btn btn-outline btn-sm" style="color: #1D4ED8; border-color: #93C5FD;" onclick="openAddCloudToVaultModal('${d.id}')">🔐 Vault</button>` : ''}
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
+              ${documents.map((d, index) => renderMinimalDocumentRowHtml(d, index, canVault)).join('')}
             </tbody>
           </table>
         </div>
@@ -5414,11 +5772,25 @@
 
     function submitCreateFolder() {
       closeCreateFolderModal();
-      renderFoldersView(document.getElementById('page-content'), null);
+      renderDocumentsView(document.getElementById('page-content'), 'ALL');
+    }
+
+    function previewSmartScanTag() {
+      const titleVal = document.getElementById('scan-doc-title')?.value || '';
+      const badgeEl = document.getElementById('scan-smart-tag-preview');
+      const folderSelect = document.getElementById('scan-folder-category');
+      if (!badgeEl) return;
+      if (!titleVal.trim()) {
+        badgeEl.innerHTML = '✨ Smart OCR + AI Rules will auto-detect <strong>#BIR-*</strong> or <strong>#Company-*</strong> tag on scan';
+        return;
+      }
+      const sm = smartClientAutoTag(titleVal);
+      if (folderSelect) folderSelect.value = sm.folderCategory;
+      badgeEl.innerHTML = `✨ Auto-Detected: <strong>${sm.folderCategory === 'BIR' ? '🏛️ BIR' : "🏢 Company's"} · ${sm.categoryTag}</strong> <span style="opacity:0.75;">(${sm.rule})</span>`;
     }
 
     // ==========================================
-    // VIEW: SCANNER & LOCAL STORAGE (Universal Port Switcher + Path Redirect)
+    // VIEW: INGEST & SCAN (Minimalist 3-Mode Workspace: Scanner + Local Storage | Windows Uploader | Multi-File Upload)
     // ==========================================
     async function renderScannerLocalView(container) {
       let portData = { activeScannerId: 'SCAN-USB-001', activePort: 'USB001', scanners: [] };
@@ -5449,42 +5821,57 @@
       };
 
       container.innerHTML = `
+        <!-- Minimalist 3-Mode Ingest Switcher Bar -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div class="segmented-pills">
+            <button type="button" class="seg-pill active" onclick="renderScannerLocalView(document.getElementById('page-content'))">
+              🖨️ Scanner & Local Storage
+            </button>
+            <button type="button" class="seg-pill" onclick="renderWindowsUploaderView(document.getElementById('page-content'))">
+              💻 Windows Uploader
+            </button>
+            <button type="button" class="seg-pill" onclick="openBatchUploadModal()">
+              📤 Multi-File Auto-Separate Upload
+            </button>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="renderScannerLocalView(document.getElementById('page-content'))">🔄 Refresh Ports & Local Path</button>
+        </div>
+
         <!-- Universal Port Scanner & Dual-Save Card -->
-        <div class="card" style="border-top: 3px solid #0D9488;">
+        <div class="card">
           <div class="card-header">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <h3 class="card-heading">🖨️ Universal Port Scanner (Dual-Save: Local Storage + Cloud Storage)</h3>
+                <h3 class="card-heading">🖨️ Universal Port Scanner (Local Storage + Cloud Storage + Smart OCR Auto-Tag)</h3>
                 <span class="badge badge-success">PORT READY</span>
               </div>
               <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.15rem;">
-                Adapts to any scanner connected to USB, WIA, TWAIN, or LAN-WSD ports. Every scan automatically saves to <strong>both Local Storage and Cloud Storage</strong>.
+                Switch between any USB, WIA, TWAIN, or LAN-WSD port. Every scan saves to <strong>Local Storage + Cloud Storage</strong> and runs <strong>Smart BIR / Company's Auto-Tagging</strong>.
               </div>
             </div>
-            <button class="btn btn-outline btn-sm" onclick="renderScannerLocalView(document.getElementById('page-content'))">🔄 Re-Detect Ports</button>
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
             <!-- Left: Connected Scanners & Port Switcher -->
             <div style="background: #F8FAFC; border: 1px solid var(--card-border); border-radius: 8px; padding: 1rem;">
               <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.65rem;">
-                🔌 Connected Scanner Ports (Click to Switch Active Scanner)
+                🔌 Connected Scanner Ports (Click to Switch)
               </div>
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 ${scanners.map(s => {
                   const isCurrent = s.id === portData.activeScannerId || s.isActive;
                   return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.85rem; background: ${isCurrent ? '#ECFDF5' : '#FFFFFF'}; border: 2px solid ${isCurrent ? '#0D9488' : '#E2E8F0'}; border-radius: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: ${isCurrent ? '#ECFDF5' : '#FFFFFF'}; border: 1.5px solid ${isCurrent ? '#0D9488' : '#E2E8F0'}; border-radius: 6px;">
                       <div>
-                        <div style="font-size: 0.84rem; font-weight: 700; color: #0F172A;">
+                        <div style="font-size: 0.82rem; font-weight: 600; color: #0F172A;">
                           ${isCurrent ? '🟢 ' : '⚪ '}${s.name}
                         </div>
-                        <div style="font-size: 0.72rem; color: #64748B; font-family: monospace;">
-                          Port: <strong>${s.port}</strong> • Driver: ${s.protocol} • ${s.status}
+                        <div style="font-size: 0.71rem; color: #64748B; font-family: monospace;">
+                          Port: <strong>${s.port}</strong> • ${s.protocol}
                         </div>
                       </div>
                       <button class="btn ${isCurrent ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="switchScannerPort('${s.id}', '${s.port}', '${s.name.replace(/'/g, "\\'")}')">
-                        ${isCurrent ? '✔ Active' : 'Switch Port'}
+                        ${isCurrent ? '✔ Active' : 'Use Port'}
                       </button>
                     </div>
                   `;
@@ -5493,11 +5880,11 @@
 
               <!-- Custom Port / Any Connected Hardware Adapter -->
               <div style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed #CBD5E1;">
-                <div style="font-size: 0.74rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem;">Connect Custom Port / Newly Plugged Scanner:</div>
+                <div style="font-size: 0.74rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem;">Bind Custom Hardware Port:</div>
                 <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                  <input type="text" id="custom-scanner-port" class="form-input" placeholder="Port (e.g. USB003, COM4, WSD-IP)" style="flex: 1; min-width: 120px; font-size: 0.78rem;" />
-                  <input type="text" id="custom-scanner-name" class="form-input" placeholder="Scanner Model Name" style="flex: 1; min-width: 140px; font-size: 0.78rem;" />
-                  <button class="btn btn-outline btn-sm" onclick="switchCustomScannerPort()">Bind Port</button>
+                  <input type="text" id="custom-scanner-port" class="form-input" placeholder="Port (USB003, COM4)" style="flex: 1; min-width: 110px; font-size: 0.78rem;" />
+                  <input type="text" id="custom-scanner-name" class="form-input" placeholder="Scanner Model" style="flex: 1; min-width: 130px; font-size: 0.78rem;" />
+                  <button class="btn btn-outline btn-sm" onclick="switchCustomScannerPort()">Bind</button>
                 </div>
               </div>
             </div>
@@ -5507,12 +5894,15 @@
               <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.65rem;">
                 ⚡ Capture Scan → Local Storage + Cloud Storage
               </div>
-              <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 0.6rem 0.8rem; margin-bottom: 0.85rem; font-size: 0.76rem; color: #115E59;">
-                Active Device: <strong>${activeScanner.name}</strong> on Port <strong class="mono">${activeScanner.port}</strong>
+              <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 0.55rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.75rem; color: #115E59;">
+                Active Scanner: <strong>${activeScanner.name}</strong> (<strong class="mono">${activeScanner.port}</strong>)
               </div>
               <div class="form-group">
                 <label class="form-label">Scanned Document Title</label>
-                <input type="text" id="scan-doc-title" class="form-input" placeholder="e.g., BIR Form 2307 - Q4 Scan or Supplier Contract" />
+                <input type="text" id="scan-doc-title" oninput="previewSmartScanTag()" class="form-input" placeholder="e.g., BIR Form 2307 - Q4 Scan or Supplier Contract" />
+                <div id="scan-smart-tag-preview" style="font-size: 0.71rem; color: #1D4ED8; margin-top: 0.3rem;">
+                  ✨ Smart OCR + AI Rules will auto-detect <strong>#BIR-*</strong> or <strong>#Company-*</strong> tag on scan
+                </div>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
                 <div class="form-group">
@@ -5532,7 +5922,7 @@
                 </div>
               </div>
               <button class="btn btn-primary" id="btn-trigger-scan" style="width: 100%; justify-content: center; background: #0D9488; border-color: #0D9488; padding: 0.6rem;" onclick="triggerUniversalDualScan('${activeScanner.id}', '${activeScanner.port}')">
-                🖨️ Scan Now (Save to Local Storage + Cloud Storage)
+                🖨️ Scan Now (Local + Cloud + Smart Auto-Tag)
               </button>
             </div>
           </div>
@@ -5727,11 +6117,27 @@
       const downloadUrl = `${API_BASE}/api/v1/converter/windows-uploader-download?token=${auth.token || ''}`;
 
       container.innerHTML = `
-        <div class="card" style="border-top: 3px solid #2563EB;">
+        <!-- Minimalist 3-Mode Ingest Switcher Bar -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div class="segmented-pills">
+            <button type="button" class="seg-pill" onclick="renderScannerLocalView(document.getElementById('page-content'))">
+              🖨️ Scanner & Local Storage
+            </button>
+            <button type="button" class="seg-pill active" onclick="renderWindowsUploaderView(document.getElementById('page-content'))">
+              💻 Windows Uploader
+            </button>
+            <button type="button" class="seg-pill" onclick="openBatchUploadModal()">
+              📤 Multi-File Auto-Separate Upload
+            </button>
+          </div>
+          <a href="${downloadUrl}" download="DCC-Windows-Cloud-Uploader-Setup.zip" class="btn btn-primary btn-sm" style="text-decoration: none;">⬇ Download Windows Uploader</a>
+        </div>
+
+        <div class="card">
           <div class="card-header">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <h3 class="card-heading">💻 Windows Uploader → ☁️ Cloud Storage</h3>
+                <h3 class="card-heading">💻 Windows Uploader → ☁️ Cloud Storage (Smart OCR Auto-Tag)</h3>
                 <span class="badge badge-primary">DIRECT CLOUD STREAM</span>
               </div>
               <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">

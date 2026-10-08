@@ -78,17 +78,259 @@ export function resolveProperDownloadFilename(preferredName: string, filePath?: 
   return base.replace(/[^\w\s.-]/gi, '_');
 }
 
+export interface SmartAutoTagResult {
+  folderCategory: 'BIR' | 'COMPANY_DOCS';
+  categoryTag: string;
+  documentType: string;
+  confidence: number;
+  matchedRule: string;
+  matchedKeywords: string[];
+  autoTagged: boolean;
+}
+
+const SMART_AUTO_TAG_RULES: Array<{
+  folderCategory: 'BIR' | 'COMPANY_DOCS';
+  categoryTag: string;
+  documentType: string;
+  ruleName: string;
+  patterns: RegExp[];
+  weight: number;
+}> = [
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-2307',
+    documentType: 'BIR_2307',
+    ruleName: 'BIR Form 2307 (Creditable Tax Withheld at Source)',
+    patterns: [/\b2307\b/i, /creditable\s+tax\s+withheld/i, /withholding\s+tax\s+at\s+source/i, /\bcwt\b/i],
+    weight: 100,
+  },
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-2316',
+    documentType: 'BIR_2316',
+    ruleName: 'BIR Form 2316 (Certificate of Compensation Payment / Tax Withheld)',
+    patterns: [/\b2316\b/i, /compensation\s+payment/i, /tax\s+withheld\s+on\s+compensation/i, /\balphalist\b/i],
+    weight: 100,
+  },
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-VAT',
+    documentType: 'BIR_VAT',
+    ruleName: 'BIR Form 2550M/2550Q (Value-Added Tax Declaration)',
+    patterns: [/\b2550[mq]?\b/i, /value[\s-]*added\s+tax/i, /\bvat\s+(return|declaration|relief|summary|invoice)\b/i, /\bvat\b/i],
+    weight: 95,
+  },
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-Income-Tax',
+    documentType: 'BIR_TAX_RETURN',
+    ruleName: 'BIR Form 1701/1702 (Annual / Quarterly Income Tax Return)',
+    patterns: [/\b170[012][A-Za-z]?\b/i, /income\s+tax\s+return/i, /\bitr\b/i, /quarterly\s+income\s+tax/i, /annual\s+income\s+tax/i],
+    weight: 95,
+  },
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-COR',
+    documentType: 'BIR_COR',
+    ruleName: 'BIR Form 2303 (Certificate of Registration / Authority to Print)',
+    patterns: [/\b2303\b/i, /certificate\s+of\s+registration/i, /\bbir[\s_-]*cor\b/i, /authority\s+to\s+print/i, /\batp\b/i, /\btin\s*(card|id|verification)\b/i],
+    weight: 95,
+  },
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-Official-Receipt',
+    documentType: 'BIR_OFFICIAL_RECEIPT',
+    ruleName: 'BIR Official Receipt / Collection Receipt',
+    patterns: [/official\s+receipt/i, /collection\s+receipt/i, /\bbir\s+receipt\b/i, /\bor[\s#-]*\d+/i, /\breceipt[\s_-]*\d+/i],
+    weight: 88,
+  },
+  {
+    folderCategory: 'BIR',
+    categoryTag: '#BIR-Tax-Compliance',
+    documentType: 'BIR_TAX_RETURN',
+    ruleName: 'BIR Tax Compliance / Return (0605 / 1601 / eFPS / eBIRForms)',
+    patterns: [/\bbir\b/i, /bureau\s+of\s+internal\s+revenue/i, /\b(0605|1601[cefq]?|1604[cf]?|2306)\b/i, /\befps\b/i, /\bebirforms\b/i, /tax\s+(compliance|clearance|return|assessment|payment)/i, /withholding\s+tax/i],
+    weight: 85,
+  },
+  {
+    folderCategory: 'COMPANY_DOCS',
+    categoryTag: '#Company-Contract',
+    documentType: 'CONTRACT',
+    ruleName: "Company's Documentation — Legal Contract / MOA / NDA",
+    patterns: [/\bcontract\b/i, /\bagreement\b/i, /memorandum\s+of\s+agreement/i, /\bmoa\b/i, /\bmou\b/i, /\bnda\b/i, /non[\s-]*disclosure/i, /deed\s+of/i, /\blease\b/i, /\bsla\b/i],
+    weight: 92,
+  },
+  {
+    folderCategory: 'COMPANY_DOCS',
+    categoryTag: '#Company-SEC-GIS',
+    documentType: 'COMPANY_DOCUMENTATION',
+    ruleName: "Company's Documentation — SEC / GIS / Board Resolution",
+    patterns: [/\bsec\b/i, /\bgis\b/i, /general\s+information\s+sheet/i, /articles\s+of\s+incorporation/i, /by[\s-]*laws/i, /board\s+resolution/i, /secretary['’]?s\s+certificate/i],
+    weight: 92,
+  },
+  {
+    folderCategory: 'COMPANY_DOCS',
+    categoryTag: '#Company-HR-Record',
+    documentType: 'HR_DOCUMENT',
+    ruleName: "Company's Documentation — HR / Employee / Payroll Record",
+    patterns: [/\bhr\b/i, /human\s+resources/i, /\bemployee\b/i, /\b201\s*file\b/i, /\bpayroll\b/i, /\bpayslip\b/i, /\bdtr\b/i, /\bresume\b/i, /employment/i, /\bmemorandum\b/i, /\bmemo\b/i],
+    weight: 88,
+  },
+  {
+    folderCategory: 'COMPANY_DOCS',
+    categoryTag: '#Company-Invoice-PO',
+    documentType: 'PURCHASE_ORDER',
+    ruleName: "Company's Documentation — Commercial Invoice / Purchase Order / DR",
+    patterns: [/purchase\s+order/i, /\bpo[\s#_-]*\d+/i, /\binvoice\b/i, /\bbilling\b/i, /\bquotation\b/i, /delivery\s+receipt/i, /\bdr[\s#_-]*\d+/i, /\bsoa\b/i, /statement\s+of\s+account/i, /requisition/i],
+    weight: 90,
+  },
+  {
+    folderCategory: 'COMPANY_DOCS',
+    categoryTag: '#Company-Accounting',
+    documentType: 'FINANCIAL_RECORD',
+    ruleName: "Company's Documentation — Accounting / Financial / Audit Record",
+    patterns: [/\baccounting\b/i, /financial\s+statement/i, /balance\s+sheet/i, /trial\s+balance/i, /\bledger\b/i, /\baudit\b/i, /\bvoucher\b/i, /\bdisbursement\b/i, /\bbudget\b/i, /reimbursement/i, /petty\s+cash/i],
+    weight: 89,
+  },
+  {
+    folderCategory: 'COMPANY_DOCS',
+    categoryTag: '#Company-Permit-License',
+    documentType: 'COMPANY_DOCUMENTATION',
+    ruleName: "Company's Documentation — Business Permit / License / Government Clearance",
+    patterns: [/\bpermit\b/i, /mayor['’]?s\s+permit/i, /barangay\s+clearance/i, /sanitary/i, /fire\s+safety/i, /\bfsic\b/i, /\blicense\b/i, /\bfda\b/i, /\bdenr\b/i, /\bdti\b/i, /\bphilhealth\b/i, /\bsss\b/i, /pag[\s-]*ibig/i],
+    weight: 90,
+  },
+];
+
+export function extractSampleTextFromFileOrBuffer(filePath?: string | null, buffer?: Buffer | null): string {
+  try {
+    let buf = buffer || null;
+    if (!buf && filePath && fs.existsSync(filePath)) {
+      const stat = fs.statSync(filePath);
+      const readLen = Math.min(stat.size, 65536);
+      const fd = fs.openSync(filePath, 'r');
+      buf = Buffer.alloc(readLen);
+      fs.readSync(fd, buf, 0, readLen, 0);
+      fs.closeSync(fd);
+    }
+    if (!buf || buf.length === 0) return '';
+    // Extract readable ASCII/Latin strings of length >= 4 (works on plain text, CSV, JSON, and uncompressed PDF metadata/text streams)
+    const raw = buf.toString('latin1');
+    const matches = raw.match(/[A-Za-z0-9][A-Za-z0-9\s\-_.,/#():]{3,60}/g);
+    if (!matches) return '';
+    return matches.slice(0, 180).join(' ');
+  } catch {
+    return '';
+  }
+}
+
+export function smartAutoClassifyDocument(params: {
+  title?: string;
+  originalFilename?: string;
+  docType?: string;
+  remarks?: string;
+  ocrText?: string;
+  filePath?: string | null;
+  fileBuffer?: Buffer | null;
+  explicitFolder?: string;
+  explicitTag?: string;
+}): SmartAutoTagResult {
+  const sampleFileText = extractSampleTextFromFileOrBuffer(params.filePath, params.fileBuffer);
+  const corpus = [
+    params.title || '',
+    params.originalFilename || '',
+    params.remarks || '',
+    params.ocrText || '',
+    params.docType || '',
+    sampleFileText,
+  ].join(' ');
+
+  let bestRule: (typeof SMART_AUTO_TAG_RULES)[number] | null = null;
+  let bestScore = 0;
+  let matchedKeywords: string[] = [];
+
+  for (const rule of SMART_AUTO_TAG_RULES) {
+    let hitCount = 0;
+    const hits: string[] = [];
+    for (const regex of rule.patterns) {
+      const m = corpus.match(regex);
+      if (m) {
+        hitCount++;
+        hits.push(m[0]);
+      }
+    }
+    if (hitCount > 0) {
+      const score = rule.weight + (hitCount - 1) * 12;
+      if (score > bestScore) {
+        bestScore = score;
+        bestRule = rule;
+        matchedKeywords = hits;
+      }
+    }
+  }
+
+  // If explicit non-default tag was deliberately chosen and no stronger rule override is requested
+  const expTag = (params.explicitTag || '').trim();
+  const expFolder = (params.explicitFolder || '').trim().toUpperCase();
+  const isGenericDefault =
+    !expTag ||
+    expTag === 'AUTO' ||
+    expTag === '#Company-General-Doc' ||
+    (expTag === '#BIR-2307' && expFolder !== 'BIR');
+
+  if (bestRule && (isGenericDefault || expFolder === 'AUTO')) {
+    return {
+      folderCategory: bestRule.folderCategory,
+      categoryTag: bestRule.categoryTag,
+      documentType: bestRule.documentType,
+      confidence: Math.min(99.4, Number((88 + Math.min(11, bestScore / 12)).toFixed(1))),
+      matchedRule: bestRule.ruleName,
+      matchedKeywords,
+      autoTagged: true,
+    };
+  }
+
+  if (expTag && expTag !== 'AUTO') {
+    const cleanTag = expTag.startsWith('#') ? expTag : `#${expTag}`;
+    const folder: 'BIR' | 'COMPANY_DOCS' =
+      cleanTag.toUpperCase().startsWith('#BIR') || expFolder === 'BIR' ? 'BIR' : 'COMPANY_DOCS';
+    return {
+      folderCategory: folder,
+      categoryTag: cleanTag,
+      documentType: params.docType || (bestRule ? bestRule.documentType : folder === 'BIR' ? 'BIR_TAX_RETURN' : 'COMPANY_DOCUMENTATION'),
+      confidence: bestRule ? 96.5 : 90.0,
+      matchedRule: bestRule ? bestRule.ruleName : `Assigned ${cleanTag}`,
+      matchedKeywords,
+      autoTagged: Boolean(bestRule),
+    };
+  }
+
+  if (bestRule) {
+    return {
+      folderCategory: bestRule.folderCategory,
+      categoryTag: bestRule.categoryTag,
+      documentType: bestRule.documentType,
+      confidence: Math.min(99.4, Number((88 + Math.min(11, bestScore / 12)).toFixed(1))),
+      matchedRule: bestRule.ruleName,
+      matchedKeywords,
+      autoTagged: true,
+    };
+  }
+
+  const fallbackFolder: 'BIR' | 'COMPANY_DOCS' = expFolder === 'BIR' ? 'BIR' : 'COMPANY_DOCS';
+  return {
+    folderCategory: fallbackFolder,
+    categoryTag: fallbackFolder === 'BIR' ? '#BIR-Tax-Compliance' : '#Company-General-Doc',
+    documentType: params.docType || (fallbackFolder === 'BIR' ? 'BIR_TAX_RETURN' : 'COMPANY_DOCUMENTATION'),
+    confidence: 85.0,
+    matchedRule: fallbackFolder === 'BIR' ? 'Default BIR Tax Compliance Classification' : "Default Company's Documentation Classification",
+    matchedKeywords: [],
+    autoTagged: true,
+  };
+}
+
 export function resolveFolderCategory(title?: string, docType?: string, explicitFolder?: string): 'BIR' | 'COMPANY_DOCS' {
-  if (explicitFolder) {
-    const norm = explicitFolder.toUpperCase();
-    if (norm.includes('BIR') || norm.includes('TAX')) return 'BIR';
-    if (norm.includes('COMPANY')) return 'COMPANY_DOCS';
-  }
-  const combined = `${title || ''} ${docType || ''}`.toUpperCase();
-  if (/\b(BIR|2307|2316|1601|1701|1702|2550|0605|TAX|TIN|VAT|WITHHOLDING|COR|ATP|OFFICIAL_RECEIPT)\b/.test(combined)) {
-    return 'BIR';
-  }
-  return 'COMPANY_DOCS';
+  return smartAutoClassifyDocument({ title, docType, explicitFolder }).folderCategory;
 }
 
 export function resolveCategoryTag(
@@ -97,30 +339,12 @@ export function resolveCategoryTag(
   folderCategory?: 'BIR' | 'COMPANY_DOCS',
   explicitTag?: string
 ): string {
-  if (explicitTag && explicitTag.trim()) {
-    const clean = explicitTag.trim();
-    return clean.startsWith('#') ? clean : `#${clean}`;
-  }
-  const folder = folderCategory || resolveFolderCategory(title, docType);
-  const combined = `${title || ''} ${docType || ''}`.toUpperCase();
-
-  if (folder === 'BIR') {
-    if (combined.includes('2307') || combined.includes('WITHHOLDING')) return '#BIR-2307';
-    if (combined.includes('2316')) return '#BIR-2316';
-    if (combined.includes('2550') || combined.includes('VAT')) return '#BIR-VAT';
-    if (combined.includes('1701') || combined.includes('1702') || combined.includes('INCOME')) return '#BIR-Income-Tax';
-    if (combined.includes('2303') || combined.includes('COR')) return '#BIR-COR';
-    if (combined.includes('ATP') || combined.includes('RECEIPT')) return '#BIR-Official-Receipt';
-    return '#BIR-Tax-Compliance';
-  } else {
-    if (combined.includes('CONTRACT') || combined.includes('MOA') || combined.includes('AGREEMENT')) return '#Company-Contract';
-    if (combined.includes('SEC') || combined.includes('GIS') || combined.includes('BYLAWS')) return '#Company-SEC-GIS';
-    if (combined.includes('HR') || combined.includes('EMPLOYEE') || combined.includes('PAYROLL')) return '#Company-HR-Record';
-    if (combined.includes('INVOICE') || combined.includes('PO') || combined.includes('PURCHASE')) return '#Company-Invoice-PO';
-    if (combined.includes('ACCOUNTING') || combined.includes('VOUCHER') || combined.includes('AUDIT')) return '#Company-Accounting';
-    if (combined.includes('PERMIT') || combined.includes('MAYOR') || combined.includes('LICENSE')) return '#Company-Permit-License';
-    return '#Company-General-Doc';
-  }
+  return smartAutoClassifyDocument({
+    title,
+    docType,
+    explicitFolder: folderCategory,
+    explicitTag,
+  }).categoryTag;
 }
 
 export class DocumentController {
@@ -135,6 +359,7 @@ export class DocumentController {
         folderCategory,
         categoryTag,
         customTags,
+        remarks,
         pageCount,
         fileSizeBytes,
         sha256Hash,
@@ -145,8 +370,6 @@ export class DocumentController {
       } = req.body;
 
       const docTitle = title || `Scan_NKB_${new Date().toISOString().slice(0, 10)}.pdf`;
-      const resolvedFolder = resolveFolderCategory(docTitle, documentType, folderCategory);
-      const resolvedTag = resolveCategoryTag(docTitle, documentType, resolvedFolder, categoryTag);
 
       let finalHash = sha256Hash;
       let finalSizeBytes = fileSizeBytes || 102400;
@@ -155,6 +378,7 @@ export class DocumentController {
       let finalPageCount = pageCount || 1;
       let scannedPagesData: any[] = [];
       let storageTier = 'CLOUD_STORAGE';
+      let uploadedFileBuf: Buffer | null = null;
 
       // Save fileData if provided (e.g. from Windows Uploader or Manual Upload -> Cloud Storage)
       if (req.body.fileData) {
@@ -162,6 +386,7 @@ export class DocumentController {
           const uploadDir = path.resolve(process.cwd(), 'uploads', 'documents');
           if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
           const fileBuf = Buffer.from(req.body.fileData, 'base64');
+          uploadedFileBuf = fileBuf;
           if (!finalHash) {
             finalHash = crypto.createHash('sha256').update(fileBuf).digest('hex');
           }
@@ -174,6 +399,21 @@ export class DocumentController {
           // ignore or fallback
         }
       }
+
+      // Run Smart BIR & Company's Auto-Tagging (OCR + AI Rules)
+      const smartClassification = smartAutoClassifyDocument({
+        title: docTitle,
+        originalFilename: req.body.originalFilename || docTitle,
+        docType: documentType,
+        remarks: remarks || '',
+        filePath: finalStorageKey,
+        fileBuffer: uploadedFileBuf,
+        explicitFolder: folderCategory,
+        explicitTag: categoryTag,
+      });
+      const resolvedFolder = smartClassification.folderCategory;
+      const resolvedTag = smartClassification.categoryTag;
+      const resolvedDocType = documentType || smartClassification.documentType;
 
       // If hardware scan requested (Any connected scanner on USB / WIA / TWAIN / LAN) -> Saves to Local Storage AND Cloud Storage
       if (usePhysicalHardware || scannerDevice) {
@@ -234,6 +474,9 @@ export class DocumentController {
         { key: 'storage_tier', value: storageTier },
         { key: 'folder_category', value: resolvedFolder },
         { key: 'category_tag', value: resolvedTag },
+        { key: 'auto_tagged', value: 'true' },
+        { key: 'auto_tag_rule', value: smartClassification.matchedRule },
+        { key: 'auto_tag_confidence', value: String(smartClassification.confidence) },
         { key: 'ingest_source', value: req.body.source || (usePhysicalHardware || scannerDevice ? 'SCANNER' : 'CLOUD_UPLOAD') },
       ];
       if (customTags) {
@@ -248,7 +491,7 @@ export class DocumentController {
           value: JSON.stringify([{
             name: resolveProperDownloadFilename(docTitle || 'Document', finalStorageKey, detectMimeType(finalStorageKey, docTitle)),
             size: finalSizeBytes,
-            type: documentType || 'GENERAL',
+            type: resolvedDocType,
             pageCount: finalPageCount,
             storageKey: finalStorageKey,
             localStoragePath: localSavedPath,
@@ -262,7 +505,7 @@ export class DocumentController {
           referenceNumber: `DOC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
           organizationId: user.organizationId,
           departmentId: resolvedDeptId,
-          documentType: documentType || (resolvedFolder === 'BIR' ? 'BIR_TAX' : 'COMPANY_DOC'),
+          documentType: resolvedDocType,
           pageCount: finalPageCount,
           fileSizeBytes: finalSizeBytes,
           sha256Hash: finalHash,
@@ -277,9 +520,9 @@ export class DocumentController {
           },
           ocrResult: {
             create: {
-              avgConfidence: 98.5,
-              confidence: 98.5,
-              rawText: `Document "${docTitle}" (${finalPageCount} pages) stored in ${storageTier} [${resolvedFolder}]. SHA-256: ${finalHash}.`,
+              avgConfidence: smartClassification.confidence,
+              confidence: smartClassification.confidence,
+              rawText: `[Smart OCR + AI Auto-Tag: ${resolvedTag} (${smartClassification.confidence}% confidence) — ${smartClassification.matchedRule}]\nDocument "${docTitle}" (${finalPageCount} pages) stored in ${storageTier} [${resolvedFolder}]. SHA-256: ${finalHash}.`,
               language: 'eng',
               pageCount: finalPageCount,
             },
@@ -529,17 +772,18 @@ export class DocumentController {
       for (let i = 0; i < documents.length; i++) {
         const item = documents[i];
         const docTitle = item.title || `Doc_${new Date().toISOString().slice(0, 10)}_${Math.random().toString(36).substring(7)}.pdf`;
-        const itemFolder = resolveFolderCategory(
-          docTitle,
-          item.documentType || defaultDocumentType,
-          item.folderCategory || folderCategory
-        );
-        const itemCategoryTag = resolveCategoryTag(
-          docTitle,
-          item.documentType || defaultDocumentType,
-          itemFolder,
-          item.categoryTag || req.body.categoryTag
-        );
+        const smartClass = smartAutoClassifyDocument({
+          title: docTitle,
+          originalFilename: item.originalFilename || item.filename || docTitle,
+          docType: item.documentType || defaultDocumentType,
+          remarks: item.remarks || '',
+          filePath: item.storageKey || null,
+          explicitFolder: item.folderCategory || folderCategory,
+          explicitTag: item.categoryTag || req.body.categoryTag,
+        });
+        const itemFolder = smartClass.folderCategory;
+        const itemCategoryTag = smartClass.categoryTag;
+        const itemDocType = item.documentType || defaultDocumentType || smartClass.documentType;
 
         let resolvedDeptId = globalResolvedDeptId;
         if (item.departmentId && item.departmentId !== defaultDepartmentId) {
@@ -574,6 +818,9 @@ export class DocumentController {
           { key: 'storage_tier', value: 'CLOUD_STORAGE' },
           { key: 'folder_category', value: itemFolder },
           { key: 'category_tag', value: itemCategoryTag },
+          { key: 'auto_tagged', value: 'true' },
+          { key: 'auto_tag_rule', value: smartClass.matchedRule },
+          { key: 'auto_tag_confidence', value: String(smartClass.confidence) },
           { key: 'auto_separated', value: (!keepBatchGroup).toString() },
           { key: 'ingest_source', value: item.source || req.body.source || 'MANUAL_CLOUD_UPLOAD' },
           {
@@ -581,7 +828,7 @@ export class DocumentController {
             value: JSON.stringify([{
               name: resolveProperDownloadFilename(item.originalFilename || docTitle, finalStorageKey, detectMimeType(finalStorageKey, docTitle)),
               size: finalSizeBytes,
-              type: item.documentType || defaultDocumentType || (itemFolder === 'BIR' ? 'BIR_TAX' : 'COMPANY_DOC'),
+              type: itemDocType,
               pageCount: finalPageCount,
               storageKey: finalStorageKey,
             }]),
@@ -606,7 +853,7 @@ export class DocumentController {
             referenceNumber: individualRef,
             organizationId: user.organizationId,
             departmentId: resolvedDeptId,
-            documentType: item.documentType || defaultDocumentType || (itemFolder === 'BIR' ? 'BIR_TAX' : 'COMPANY_DOC'),
+            documentType: itemDocType,
             pageCount: finalPageCount,
             fileSizeBytes: finalSizeBytes,
             sha256Hash: finalHash,
@@ -621,9 +868,9 @@ export class DocumentController {
             },
             ocrResult: {
               create: {
-                avgConfidence: 98.5,
-                confidence: 98.5,
-                rawText: `Separated Cloud Storage document "${docTitle}" (${finalPageCount} page(s)) in [${itemFolder}]. SHA-256: ${finalHash}`,
+                avgConfidence: smartClass.confidence,
+                confidence: smartClass.confidence,
+                rawText: `[Smart OCR + AI Auto-Tag: ${itemCategoryTag} (${smartClass.confidence}% confidence) — ${smartClass.matchedRule}]\nSeparated Cloud Storage document "${docTitle}" (${finalPageCount} page(s)) in [${itemFolder}]. SHA-256: ${finalHash}`,
                 language: 'eng',
                 pageCount: finalPageCount,
               },
@@ -1585,6 +1832,97 @@ export class DocumentController {
       });
 
       res.json({ message: `Ang buong dossier "${doc.title}" ay matagumpay na nabura.` });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Smart BIR & Company's Documentation Auto-Tagging Analyzer (OCR + AI Rules)
+  async autoTagAnalyze(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { title, originalFilename, docType, remarks, ocrText } = req.body;
+      const result = smartAutoClassifyDocument({
+        title,
+        originalFilename,
+        docType,
+        remarks,
+        ocrText,
+      });
+      res.json({
+        success: true,
+        classification: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Smart Auto-Tag All Documents in Cloud Storage (Retroactive OCR + AI Rules Classification)
+  async autoTagAll(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const user = req.user!;
+      const docs = await prisma.document.findMany({
+        where: { organizationId: user.organizationId },
+        include: { metadata: true, ocrResult: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      let birCount = 0;
+      let companyCount = 0;
+      const updatedSummaries: Array<{ id: string; title: string; folderCategory: string; categoryTag: string; rule: string }> = [];
+
+      for (const doc of docs) {
+        const classification = smartAutoClassifyDocument({
+          title: doc.title,
+          originalFilename: doc.title,
+          docType: doc.documentType,
+          ocrText: doc.ocrResult?.rawText || '',
+          filePath: doc.storageKeyPdf,
+        });
+
+        if (classification.folderCategory === 'BIR') birCount++;
+        else companyCount++;
+
+        const keysToReplace = ['folder_category', 'category_tag', 'auto_tagged', 'auto_tag_rule', 'auto_tag_confidence'];
+        await prisma.documentMetadata.deleteMany({
+          where: {
+            documentId: doc.id,
+            key: { in: keysToReplace },
+          },
+        });
+
+        await prisma.documentMetadata.createMany({
+          data: [
+            { documentId: doc.id, key: 'folder_category', value: classification.folderCategory },
+            { documentId: doc.id, key: 'category_tag', value: classification.categoryTag },
+            { documentId: doc.id, key: 'auto_tagged', value: 'true' },
+            { documentId: doc.id, key: 'auto_tag_rule', value: classification.matchedRule },
+            { documentId: doc.id, key: 'auto_tag_confidence', value: String(classification.confidence) },
+          ],
+        });
+
+        await prisma.document.update({
+          where: { id: doc.id },
+          data: { documentType: classification.documentType },
+        });
+
+        updatedSummaries.push({
+          id: doc.id,
+          title: doc.title,
+          folderCategory: classification.folderCategory,
+          categoryTag: classification.categoryTag,
+          rule: classification.matchedRule,
+        });
+      }
+
+      res.json({
+        success: true,
+        totalProcessed: docs.length,
+        birCount,
+        companyCount,
+        documents: updatedSummaries,
+        message: `Smart OCR + AI Rules classified ${docs.length} document(s): ${birCount} BIR & ${companyCount} Company's Documentation.`,
+      });
     } catch (error) {
       next(error);
     }

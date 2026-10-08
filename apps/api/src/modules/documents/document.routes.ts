@@ -37,6 +37,20 @@ documentRouter.get(
   (req, res, next) => documentController.search(req, res, next)
 );
 
+// Smart OCR + AI Rules Auto-Tag Analyzer (Single File / Text)
+documentRouter.post(
+  '/auto-tag-analyze',
+  authenticate,
+  (req, res, next) => documentController.autoTagAnalyze(req, res, next)
+);
+
+// Smart OCR + AI Rules Bulk Auto-Tag All Documents
+documentRouter.post(
+  '/auto-tag-all',
+  authenticate,
+  (req, res, next) => documentController.autoTagAll(req, res, next)
+);
+
 // Get Document by ID
 documentRouter.get(
   '/:id',
