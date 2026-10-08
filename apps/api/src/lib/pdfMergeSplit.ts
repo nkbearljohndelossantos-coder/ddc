@@ -214,7 +214,7 @@ export async function generateDossierDocketPdf(docInfo: {
     color: rgb(1, 1, 1),
   });
 
-  page.drawText('DOCUMENT CONTROL CENTER (DCC) — DIGITAL DOSSIER CERTIFICATE', {
+  page.drawText('RECORDS MANAGEMENT SECTION — DIGITAL DOSSIER CERTIFICATE', {
     x: 40,
     y: height - 56,
     size: 8.5,

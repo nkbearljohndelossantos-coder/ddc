@@ -589,7 +589,7 @@ pause
 `;
     filesToZip.push({ name: 'Launch-DCC-Windows-Uploader.bat', content: Buffer.from(batchLauncher, 'utf-8') });
 
-    const readmeTxt = `NKB DOCUMENT CONTROL CENTER (DCC) — WINDOWS CLOUD UPLOADER
+    const readmeTxt = `NKB RECORDS MANAGEMENT SECTION — WINDOWS CLOUD UPLOADER
 ===========================================================
 Cloud Server Endpoint: ${serverOrigin}
 Storage Routing: Windows Uploader -> Cloud Storage (BIR & Company's Documentation)

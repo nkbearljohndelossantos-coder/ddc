@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     DCC Enterprise — Native Windows Explorer Upload Window (WPF)
     Supports Single File, Multiple Files, Folders, and Drag-and-Drop.
@@ -138,7 +138,7 @@ if ($Departments.Count -eq 0) {
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="DCC Enterprise - Upload to Document Control Center"
+        Title="NKB Enterprise - Upload to Records Management Section"
         Height="820" Width="920"
         MinHeight="720" MinWidth="860"
         WindowStartupLocation="CenterScreen"
@@ -202,12 +202,12 @@ if ($Departments.Count -eq 0) {
                     <Image x:Name="ImgHeaderLogo" Height="52" Margin="0,0,14,0" VerticalAlignment="Center" Stretch="Uniform"/>
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="NKB Manufacturing Corporation - DCC" FontSize="17" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="NKB Manufacturing Corporation - RMS" FontSize="17" FontWeight="Bold" Foreground="#0F172A"/>
                             <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="DESKTOP INGEST" FontSize="10" FontWeight="Bold" Foreground="#92400E"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="Document Control Center | Native Windows Explorer Upload" FontSize="12" Foreground="#475569" Margin="0,2,0,0"/>
+                        <TextBlock Text="Records Management Section | Native Windows Explorer Upload" FontSize="12" Foreground="#475569" Margin="0,2,0,0"/>
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">

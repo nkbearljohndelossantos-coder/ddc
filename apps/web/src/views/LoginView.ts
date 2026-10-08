@@ -25,7 +25,7 @@ export class LoginView {
               <span class="brand-logo" aria-hidden="true">⚙️</span>
               <span class="brand-company">NKB MANUFACTURING</span>
             </div>
-            <h1 class="login-title">Document Control Center</h1>
+            <h1 class="login-title">Records Management Section</h1>
             <p class="login-subtitle">Enterprise Document Capture, Quality Control & Compliance</p>
           </div>
 

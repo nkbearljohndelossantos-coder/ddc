@@ -113,7 +113,7 @@ export class NavigationShell {
         <div class="sidebar-header">
           <div class="sidebar-brand">
             <span class="brand-title">NKB Manufacturing</span>
-            <span class="brand-subtitle">Document Control Center</span>
+            <span class="brand-subtitle">Records Management Section</span>
           </div>
         </div>
         <nav class="sidebar-nav">

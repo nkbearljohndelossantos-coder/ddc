@@ -230,7 +230,7 @@ export class AdminService {
     });
     if (!org) {
       org = await prisma.organization.create({
-        data: { name: 'Document Control Center HQ', code: 'DCC-HQ', isActive: true },
+        data: { name: 'Records Management Section HQ', code: 'RMS-HQ', isActive: true },
       });
     }
 

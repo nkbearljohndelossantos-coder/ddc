@@ -1,4 +1,4 @@
-# Document Control Center (DCC) — System Concept Map, Architecture & Blueprint (v2.0)
+# Records Management Section — System Concept Map, Architecture & Blueprint (v2.0)
 
 ## 1. Revised System Concept Map (v2.0)
 
