@@ -23,6 +23,7 @@ import { sreRouter } from './modules/sre/sre.routes.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { metricsRouter } from './modules/metrics/metrics.routes.js';
 import { vaultRouter } from './modules/vault/vault.routes.js';
+import { converterRouter } from './modules/converter/converter.routes.js';
 import { prisma } from './lib/prisma.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -111,6 +112,7 @@ export function createApp() {
   app.use('/api/v1/integrations', integrationRouter);
   app.use('/api/v1', integrationRouter);
   app.use('/api/v1/vault', vaultRouter);
+  app.use('/api/v1/converter', converterRouter);
 
   // 8. Global Error Handler
   app.use(errorHandler);

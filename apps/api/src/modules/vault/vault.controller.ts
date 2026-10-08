@@ -119,14 +119,40 @@ export class VaultController {
     }
   }
 
-  // Upload Document to Vault
+  // Upload Document to Vault (Enforces Cloud-Storage-First Mechanic or Direct Vault Container Creation)
   async uploadDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const vaultCtx = req.vault!;
-      const { title, folder, documentType, fileData, fileName } = req.body;
+      const { title, folder, documentType, fileData, fileName, cloudDocumentId, vaultPin, removeFromCloud } = req.body;
+
+      // If cloudDocumentId is provided, use the Cloud-Storage-First pipeline
+      if (cloudDocumentId) {
+        const document = await vaultService.addFromCloudStorage({
+          cloudDocumentId,
+          title,
+          folder: folder || '/BIR',
+          documentType: documentType || 'EXECUTIVE_CONFIDENTIAL',
+          vaultPin,
+          removeFromCloud: Boolean(removeFromCloud),
+          userId: vaultCtx.userId,
+          vaultRole: vaultCtx.vaultRole,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+        });
+
+        res.status(201).json({
+          success: true,
+          message: 'Cloud Storage document compressed (GZIP) & encrypted (AES-256-GCM) to Local Storage Private Vault (.dccvault).',
+          document,
+        });
+        return;
+      }
 
       if (!fileData) {
-        res.status(400).json({ success: false, error: 'File data is required.' });
+        res.status(400).json({
+          success: false,
+          error: 'New Mechanic Enforced: Please select a document from Cloud Storage first (or provide fileData) before adding to Private Vault.',
+        });
         return;
       }
 
@@ -138,10 +164,11 @@ export class VaultController {
 
       const document = await vaultService.uploadDocument({
         title: title || fileName || 'Confidential_Document.pdf',
-        folder: folder || '/',
+        folder: folder || '/BIR',
         documentType: documentType || 'EXECUTIVE_CONFIDENTIAL',
         fileBuffer,
         fileName: fileName || 'confidential.pdf',
+        vaultPin,
         userId: vaultCtx.userId,
         vaultRole: vaultCtx.vaultRole,
         ip: req.ip,
@@ -150,7 +177,7 @@ export class VaultController {
 
       res.status(201).json({
         success: true,
-        message: 'Document securely uploaded to Private Vault.',
+        message: 'Document compressed, encrypted (.dccvault), and saved to Local Storage Private Vault.',
         document,
       });
     } catch (err: any) {
@@ -158,6 +185,72 @@ export class VaultController {
       res.status(status).json({
         success: false,
         error: err.message || 'Vault document upload failed.',
+      });
+    }
+  }
+
+  // Add Document from Cloud Storage -> Private Vault (Local Compressed + Encrypted .dccvault)
+  async addFromCloud(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const vaultCtx = req.vault!;
+      const { cloudDocumentId, title, folder, documentType, vaultPin, removeFromCloud } = req.body;
+
+      const document = await vaultService.addFromCloudStorage({
+        cloudDocumentId,
+        title,
+        folder: folder || '/BIR',
+        documentType: documentType || 'EXECUTIVE_CONFIDENTIAL',
+        vaultPin,
+        removeFromCloud: Boolean(removeFromCloud),
+        userId: vaultCtx.userId,
+        vaultRole: vaultCtx.vaultRole,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.status(201).json({
+        success: true,
+        message: `Document transferred from Cloud Storage, compressed & encrypted to Local Storage (${document.localStoragePath})!`,
+        document,
+      });
+    } catch (err: any) {
+      const status = err.statusCode || 500;
+      res.status(status).json({
+        success: false,
+        error: err.message || 'Failed to add Cloud Storage document to Private Vault.',
+      });
+    }
+  }
+
+  // Decrypt Local Storage .dccvault File in Private Vault Upload/Decrypt Section
+  async decryptLocal(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const vaultCtx = req.vault!;
+      const { vaultDocumentId, localFilePath, fileData, fileName, vaultPin } = req.body;
+
+      const fileBuffer = fileData ? Buffer.from(fileData, 'base64') : undefined;
+
+      const result = await vaultService.decryptLocalVaultFile({
+        vaultDocumentId,
+        localFilePath,
+        fileBuffer,
+        fileName,
+        vaultPin,
+        userId: vaultCtx.userId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.json({
+        success: true,
+        message: `Successfully decrypted & decompressed "${result.decryptedFileName}" in memory (AES-256-GCM verified).`,
+        ...result,
+      });
+    } catch (err: any) {
+      const status = err.statusCode || 500;
+      res.status(status).json({
+        success: false,
+        error: err.message || 'Failed to decrypt .dccvault file.',
       });
     }
   }
@@ -189,11 +282,12 @@ export class VaultController {
     }
   }
 
-  // Stream Preview
+  // Stream Preview (In-Memory Decrypted)
   async preview(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const vaultCtx = req.vault!;
       const { id } = req.params;
+      const pin = req.query.pin as string | undefined;
 
       const { stream, title, size, contentType } = await vaultService.getDocumentStream(
         id,
@@ -201,7 +295,9 @@ export class VaultController {
         vaultCtx.vaultRole,
         'PREVIEW',
         req.ip,
-        req.headers['user-agent']
+        req.headers['user-agent'],
+        pin,
+        false
       );
 
       res.setHeader('Content-Type', contentType);
@@ -217,11 +313,13 @@ export class VaultController {
     }
   }
 
-  // Stream Download
+  // Stream Download (In-Memory Decrypted OR Raw .dccvault Encrypted Container)
   async download(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const vaultCtx = req.vault!;
       const { id } = req.params;
+      const pin = req.query.pin as string | undefined;
+      const rawEncrypted = req.query.encrypted === 'true';
 
       const { stream, title, size, contentType } = await vaultService.getDocumentStream(
         id,
@@ -229,7 +327,9 @@ export class VaultController {
         vaultCtx.vaultRole,
         'DOWNLOAD',
         req.ip,
-        req.headers['user-agent']
+        req.headers['user-agent'],
+        pin,
+        rawEncrypted
       );
 
       res.setHeader('Content-Type', contentType);

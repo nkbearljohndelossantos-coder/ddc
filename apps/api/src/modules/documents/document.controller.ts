@@ -78,8 +78,53 @@ export function resolveProperDownloadFilename(preferredName: string, filePath?: 
   return base.replace(/[^\w\s.-]/gi, '_');
 }
 
+export function resolveFolderCategory(title?: string, docType?: string, explicitFolder?: string): 'BIR' | 'COMPANY_DOCS' {
+  if (explicitFolder) {
+    const norm = explicitFolder.toUpperCase();
+    if (norm.includes('BIR') || norm.includes('TAX')) return 'BIR';
+    if (norm.includes('COMPANY')) return 'COMPANY_DOCS';
+  }
+  const combined = `${title || ''} ${docType || ''}`.toUpperCase();
+  if (/\b(BIR|2307|2316|1601|1701|1702|2550|0605|TAX|TIN|VAT|WITHHOLDING|COR|ATP|OFFICIAL_RECEIPT)\b/.test(combined)) {
+    return 'BIR';
+  }
+  return 'COMPANY_DOCS';
+}
+
+export function resolveCategoryTag(
+  title?: string,
+  docType?: string,
+  folderCategory?: 'BIR' | 'COMPANY_DOCS',
+  explicitTag?: string
+): string {
+  if (explicitTag && explicitTag.trim()) {
+    const clean = explicitTag.trim();
+    return clean.startsWith('#') ? clean : `#${clean}`;
+  }
+  const folder = folderCategory || resolveFolderCategory(title, docType);
+  const combined = `${title || ''} ${docType || ''}`.toUpperCase();
+
+  if (folder === 'BIR') {
+    if (combined.includes('2307') || combined.includes('WITHHOLDING')) return '#BIR-2307';
+    if (combined.includes('2316')) return '#BIR-2316';
+    if (combined.includes('2550') || combined.includes('VAT')) return '#BIR-VAT';
+    if (combined.includes('1701') || combined.includes('1702') || combined.includes('INCOME')) return '#BIR-Income-Tax';
+    if (combined.includes('2303') || combined.includes('COR')) return '#BIR-COR';
+    if (combined.includes('ATP') || combined.includes('RECEIPT')) return '#BIR-Official-Receipt';
+    return '#BIR-Tax-Compliance';
+  } else {
+    if (combined.includes('CONTRACT') || combined.includes('MOA') || combined.includes('AGREEMENT')) return '#Company-Contract';
+    if (combined.includes('SEC') || combined.includes('GIS') || combined.includes('BYLAWS')) return '#Company-SEC-GIS';
+    if (combined.includes('HR') || combined.includes('EMPLOYEE') || combined.includes('PAYROLL')) return '#Company-HR-Record';
+    if (combined.includes('INVOICE') || combined.includes('PO') || combined.includes('PURCHASE')) return '#Company-Invoice-PO';
+    if (combined.includes('ACCOUNTING') || combined.includes('VOUCHER') || combined.includes('AUDIT')) return '#Company-Accounting';
+    if (combined.includes('PERMIT') || combined.includes('MAYOR') || combined.includes('LICENSE')) return '#Company-Permit-License';
+    return '#Company-General-Doc';
+  }
+}
+
 export class DocumentController {
-  // Ingest / Create Document (From Scanner or Web UI)
+  // Ingest / Create Document (From Universal Scanner, Windows Uploader, or Manual Upload -> Cloud Storage)
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const user = req.user!;
@@ -87,22 +132,31 @@ export class DocumentController {
         title,
         departmentId,
         documentType,
+        folderCategory,
+        categoryTag,
+        customTags,
         pageCount,
         fileSizeBytes,
         sha256Hash,
         usePhysicalHardware,
         scannerDevice,
+        portName,
+        driverType,
       } = req.body;
 
       const docTitle = title || `Scan_NKB_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const resolvedFolder = resolveFolderCategory(docTitle, documentType, folderCategory);
+      const resolvedTag = resolveCategoryTag(docTitle, documentType, resolvedFolder, categoryTag);
 
       let finalHash = sha256Hash;
       let finalSizeBytes = fileSizeBytes || 102400;
       let finalStorageKey: string | null = null;
+      let localSavedPath: string | null = null;
       let finalPageCount = pageCount || 1;
       let scannedPagesData: any[] = [];
+      let storageTier = 'CLOUD_STORAGE';
 
-      // Save fileData if provided (e.g. from right-click uploader or desktop upload)
+      // Save fileData if provided (e.g. from Windows Uploader or Manual Upload -> Cloud Storage)
       if (req.body.fileData) {
         try {
           const uploadDir = path.resolve(process.cwd(), 'uploads', 'documents');
@@ -121,17 +175,23 @@ export class DocumentController {
         }
       }
 
-      // If physical hardware scan requested (Brother ADS-4300N via WIA)
-      if (usePhysicalHardware || scannerDevice === 'Brother ADS-4300N') {
+      // If hardware scan requested (Any connected scanner on USB / WIA / TWAIN / LAN) -> Saves to Local Storage AND Cloud Storage
+      if (usePhysicalHardware || scannerDevice) {
         const scanResult = await scannerService.triggerPhysicalScan({
           title: docTitle,
           duplex: true,
+          scannerDevice: scannerDevice || undefined,
+          portName: portName || undefined,
+          driverType: driverType || undefined,
+          folderCategory: resolvedFolder,
         });
 
         finalHash = scanResult.sha256Hash;
         finalSizeBytes = scanResult.fileSizeBytes;
-        finalStorageKey = scanResult.mergedPdfPath;
+        finalStorageKey = scanResult.cloudStorageSavedPath || scanResult.mergedPdfPath;
+        localSavedPath = scanResult.localStorageSavedPath;
         finalPageCount = scanResult.pageCount;
+        storageTier = 'LOCAL_AND_CLOUD';
         scannedPagesData = scanResult.pages.map(p => ({
           pageNumber: p.pageNumber,
           storageKey: p.filePath,
@@ -169,12 +229,40 @@ export class DocumentController {
         resolvedDeptId = user.departmentId;
       }
 
+      const metaEntries: { key: string; value: string }[] = [
+        { key: 'cloud_uploaded', value: 'true' },
+        { key: 'storage_tier', value: storageTier },
+        { key: 'folder_category', value: resolvedFolder },
+        { key: 'category_tag', value: resolvedTag },
+        { key: 'ingest_source', value: req.body.source || (usePhysicalHardware || scannerDevice ? 'SCANNER' : 'CLOUD_UPLOAD') },
+      ];
+      if (customTags) {
+        metaEntries.push({ key: 'custom_tags', value: String(customTags) });
+      }
+      if (localSavedPath) {
+        metaEntries.push({ key: 'local_storage_path', value: localSavedPath });
+      }
+      if (finalStorageKey) {
+        metaEntries.push({
+          key: 'attachment_files',
+          value: JSON.stringify([{
+            name: resolveProperDownloadFilename(docTitle || 'Document', finalStorageKey, detectMimeType(finalStorageKey, docTitle)),
+            size: finalSizeBytes,
+            type: documentType || 'GENERAL',
+            pageCount: finalPageCount,
+            storageKey: finalStorageKey,
+            localStoragePath: localSavedPath,
+          }]),
+        });
+      }
+
       const doc = await prisma.document.create({
         data: {
           title: docTitle,
+          referenceNumber: `DOC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
           organizationId: user.organizationId,
           departmentId: resolvedDeptId,
-          documentType: documentType || 'INVOICE',
+          documentType: documentType || (resolvedFolder === 'BIR' ? 'BIR_TAX' : 'COMPANY_DOC'),
           pageCount: finalPageCount,
           fileSizeBytes: finalSizeBytes,
           sha256Hash: finalHash,
@@ -185,24 +273,13 @@ export class DocumentController {
             create: scannedPagesData,
           },
           metadata: {
-            create: finalStorageKey ? [
-              {
-                key: 'attachment_files',
-                value: JSON.stringify([{
-                  name: resolveProperDownloadFilename(docTitle || 'Document', finalStorageKey, detectMimeType(finalStorageKey, docTitle)),
-                  size: finalSizeBytes,
-                  type: documentType || 'INVOICE',
-                  pageCount: finalPageCount,
-                  storageKey: finalStorageKey,
-                }]),
-              }
-            ] : [],
+            create: metaEntries,
           },
           ocrResult: {
             create: {
               avgConfidence: 98.5,
               confidence: 98.5,
-              rawText: `Document dossier "${docTitle}" (${finalPageCount} pages) captured. Merged into unified PDF and verified with SHA-256 hash ${finalHash}.`,
+              rawText: `Document "${docTitle}" (${finalPageCount} pages) stored in ${storageTier} [${resolvedFolder}]. SHA-256: ${finalHash}.`,
               language: 'eng',
               pageCount: finalPageCount,
             },
@@ -212,7 +289,10 @@ export class DocumentController {
               action: 'DOCUMENT_INGESTED',
               userId: user.id,
               details: {
-                source: req.body.source || (usePhysicalHardware || scannerDevice === 'Brother ADS-4300N' ? 'Brother ADS-4300N Physical ADF Scanner' : 'Web Upload'),
+                source: req.body.source || (usePhysicalHardware || scannerDevice ? `Scanner (${scannerDevice || 'Universal'})` : 'Cloud Upload'),
+                storageTier,
+                folderCategory: resolvedFolder,
+                localStoragePath: localSavedPath,
                 pageCount: finalPageCount,
                 hash: finalHash,
                 storageKeyPdf: finalStorageKey,
@@ -222,6 +302,7 @@ export class DocumentController {
         },
         include: {
           pages: true,
+          metadata: true,
           ocrResult: true,
           department: {
             select: { name: true, code: true },
@@ -231,17 +312,23 @@ export class DocumentController {
 
       res.status(201).json({
         document: doc,
-        message: `Physical document dossier (${finalPageCount} pages) scanned and compiled into merged PDF successfully`,
+        localStorageSavedPath: localSavedPath,
+        cloudStorageSavedPath: finalStorageKey,
+        storageTier,
+        folderCategory: resolvedFolder,
+        message: localSavedPath
+          ? `Scanned & saved to both Local Storage (${localSavedPath}) and Cloud Storage!`
+          : `Document uploaded to Cloud Storage (${resolvedFolder === 'BIR' ? 'BIR Folder' : "Company's Documentation"})!`,
       });
     } catch (error: any) {
       res.status(400).json({
-        error: error.message || 'Hardware scan acquisition failed',
-        message: error.message || 'Hardware scan acquisition failed',
+        error: error.message || 'Document upload / scan acquisition failed',
+        message: error.message || 'Document upload / scan acquisition failed',
       });
     }
   }
 
-  // Ingest / Create Multiple Documents in Bulk (Batch Upload)
+  // Ingest / Create Multiple Documents in Bulk (Manual Multi-Upload -> Automatically Separated in Cloud Storage)
   async createBatch(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const user = req.user!;
@@ -250,8 +337,9 @@ export class DocumentController {
         defaultDepartmentId,
         defaultDocumentType,
         defaultDirection,
+        folderCategory,
         batchTitle,
-        bundleAsSingleDocument = true,
+        bundleAsSingleDocument = false,
       } = req.body;
 
       if (!Array.isArray(documents) || documents.length === 0) {
@@ -432,14 +520,27 @@ export class DocumentController {
         return;
       }
 
-      // Case 2: Grouped Batch Series (Shared Batch Reference & Metadata)
+      // Case 2: Automatically Separated Documents in Cloud Storage (Default for Multi-File Manual Upload)
       const sharedBatchRef = `BATCH-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       const sharedBatchTitle = batchTitle || `Batch Series ${sharedBatchRef}`;
+      const keepBatchGroup = req.body.keepBatchGroup === true;
       const createdDocs: any[] = [];
 
       for (let i = 0; i < documents.length; i++) {
         const item = documents[i];
         const docTitle = item.title || `Doc_${new Date().toISOString().slice(0, 10)}_${Math.random().toString(36).substring(7)}.pdf`;
+        const itemFolder = resolveFolderCategory(
+          docTitle,
+          item.documentType || defaultDocumentType,
+          item.folderCategory || folderCategory
+        );
+        const itemCategoryTag = resolveCategoryTag(
+          docTitle,
+          item.documentType || defaultDocumentType,
+          itemFolder,
+          item.categoryTag || req.body.categoryTag
+        );
+
         let resolvedDeptId = globalResolvedDeptId;
         if (item.departmentId && item.departmentId !== defaultDepartmentId) {
           const itemDept = await prisma.department.findFirst({
@@ -458,6 +559,9 @@ export class DocumentController {
         const finalSizeBytes = item.fileSizeBytes || 102400;
         const finalHash = item.sha256Hash || crypto.createHash('sha256').update(docTitle + Date.now() + Math.random()).digest('hex');
         const finalStorageKey = item.storageKey || `uploads/batch/${finalHash.slice(0, 12)}_${docTitle}`;
+        const individualRef = keepBatchGroup
+          ? sharedBatchRef
+          : `DOC-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
 
         const scannedPagesData = Array.from({ length: finalPageCount }, (_, idx) => ({
           pageNumber: idx + 1,
@@ -465,13 +569,44 @@ export class DocumentController {
           dpi: 300,
         }));
 
+        const metaList: { key: string; value: string }[] = [
+          { key: 'cloud_uploaded', value: 'true' },
+          { key: 'storage_tier', value: 'CLOUD_STORAGE' },
+          { key: 'folder_category', value: itemFolder },
+          { key: 'category_tag', value: itemCategoryTag },
+          { key: 'auto_separated', value: (!keepBatchGroup).toString() },
+          { key: 'ingest_source', value: item.source || req.body.source || 'MANUAL_CLOUD_UPLOAD' },
+          {
+            key: 'attachment_files',
+            value: JSON.stringify([{
+              name: resolveProperDownloadFilename(item.originalFilename || docTitle, finalStorageKey, detectMimeType(finalStorageKey, docTitle)),
+              size: finalSizeBytes,
+              type: item.documentType || defaultDocumentType || (itemFolder === 'BIR' ? 'BIR_TAX' : 'COMPANY_DOC'),
+              pageCount: finalPageCount,
+              storageKey: finalStorageKey,
+            }]),
+          },
+        ];
+        if (item.customTags || req.body.customTags) {
+          metaList.push({ key: 'custom_tags', value: String(item.customTags || req.body.customTags) });
+        }
+
+        if (keepBatchGroup) {
+          metaList.push(
+            { key: 'batch_id', value: sharedBatchRef },
+            { key: 'batch_title', value: sharedBatchTitle },
+            { key: 'batch_index', value: (i + 1).toString() },
+            { key: 'batch_total', value: documents.length.toString() }
+          );
+        }
+
         const doc = await prisma.document.create({
           data: {
             title: docTitle,
-            referenceNumber: sharedBatchRef,
+            referenceNumber: individualRef,
             organizationId: user.organizationId,
             departmentId: resolvedDeptId,
-            documentType: item.documentType || defaultDocumentType || 'GENERAL',
+            documentType: item.documentType || defaultDocumentType || (itemFolder === 'BIR' ? 'BIR_TAX' : 'COMPANY_DOC'),
             pageCount: finalPageCount,
             fileSizeBytes: finalSizeBytes,
             sha256Hash: finalHash,
@@ -482,19 +617,13 @@ export class DocumentController {
               create: scannedPagesData,
             },
             metadata: {
-              create: [
-                { key: 'batch_id', value: sharedBatchRef },
-                { key: 'batch_title', value: sharedBatchTitle },
-                { key: 'batch_index', value: (i + 1).toString() },
-                { key: 'batch_total', value: documents.length.toString() },
-                { key: 'ingest_source', value: item.source || req.body.source || 'WINDOWS_CONTEXT_MENU' },
-              ],
+              create: metaList,
             },
             ocrResult: {
               create: {
                 avgConfidence: 98.5,
                 confidence: 98.5,
-                rawText: `Batch document "${docTitle}" (${finalPageCount} page(s)) registered under batch ${sharedBatchRef}. SHA-256: ${finalHash}`,
+                rawText: `Separated Cloud Storage document "${docTitle}" (${finalPageCount} page(s)) in [${itemFolder}]. SHA-256: ${finalHash}`,
                 language: 'eng',
                 pageCount: finalPageCount,
               },
@@ -504,10 +633,11 @@ export class DocumentController {
                 action: 'DOCUMENT_BATCH_INGESTED',
                 userId: user.id,
                 details: {
-                  batchRef: sharedBatchRef,
-                  batchTitle: sharedBatchTitle,
-                  source: item.source || req.body.source || defaultDirection || 'WINDOWS_CONTEXT_MENU',
-                  recipient: item.recipient || null,
+                  referenceNumber: individualRef,
+                  folderCategory: itemFolder,
+                  storageTier: 'CLOUD_STORAGE',
+                  autoSeparated: !keepBatchGroup,
+                  source: item.source || req.body.source || 'MANUAL_CLOUD_UPLOAD',
                   pageCount: finalPageCount,
                   hash: finalHash,
                 },
@@ -528,10 +658,11 @@ export class DocumentController {
       res.status(201).json({
         success: true,
         count: createdDocs.length,
+        autoSeparated: !keepBatchGroup,
         batchRef: sharedBatchRef,
         batchTitle: sharedBatchTitle,
         documents: createdDocs,
-        message: `Successfully registered ${createdDocs.length} documents in batch series ${sharedBatchRef}.`,
+        message: `Successfully uploaded and automatically separated ${createdDocs.length} document(s) into Cloud Storage!`,
       });
     } catch (error: any) {
       res.status(400).json({
@@ -1120,12 +1251,22 @@ export class DocumentController {
     }
   }
 
-  // Update Document Metadata & Tags
+  // Update Document Metadata & Tags (Including BIR / Company's Category & Sub-Tags)
   async updateMetadata(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const user = req.user!;
       const { id } = req.params;
-      const { metadata, documentType, referenceNumber, invoiceNumber, supplierName, employeeName } = req.body;
+      const {
+        metadata,
+        documentType,
+        folderCategory,
+        categoryTag,
+        customTags,
+        referenceNumber,
+        invoiceNumber,
+        supplierName,
+        employeeName,
+      } = req.body;
 
       const doc = await prisma.document.findUnique({
         where: { id },
@@ -1136,50 +1277,80 @@ export class DocumentController {
         return;
       }
 
+      const mergedMeta: Record<string, string> = {};
+      if (metadata && typeof metadata === 'object') {
+        for (const [k, v] of Object.entries(metadata)) {
+          if (v !== undefined && v !== null) mergedMeta[k] = String(v);
+        }
+      }
+      if (folderCategory) {
+        mergedMeta['folder_category'] = resolveFolderCategory(doc.title, documentType || doc.documentType, folderCategory);
+      }
+      if (categoryTag !== undefined) {
+        mergedMeta['category_tag'] = resolveCategoryTag(
+          doc.title,
+          documentType || doc.documentType,
+          (mergedMeta['folder_category'] as 'BIR' | 'COMPANY_DOCS') || undefined,
+          categoryTag
+        );
+      }
+      if (customTags !== undefined) {
+        mergedMeta['custom_tags'] = String(customTags);
+      }
+
       const updated = await prisma.$transaction(async (tx) => {
+        for (const [key, value] of Object.entries(mergedMeta)) {
+          await tx.documentMetadata.deleteMany({
+            where: { documentId: id, key },
+          });
+          await tx.documentMetadata.create({
+            data: {
+              documentId: id,
+              key,
+              value: String(value),
+              extractedBy: 'MANUAL',
+              isVerified: true,
+            },
+          });
+        }
+
         const d = await tx.document.update({
           where: { id },
           data: {
-            documentType: documentType || doc.documentType,
+            documentType:
+              documentType ||
+              (mergedMeta['folder_category'] === 'BIR'
+                ? 'BIR_TAX'
+                : mergedMeta['folder_category'] === 'COMPANY_DOCS'
+                ? 'COMPANY_DOC'
+                : doc.documentType),
             referenceNumber: referenceNumber !== undefined ? referenceNumber : doc.referenceNumber,
             invoiceNumber: invoiceNumber !== undefined ? invoiceNumber : doc.invoiceNumber,
             supplierName: supplierName !== undefined ? supplierName : doc.supplierName,
             employeeName: employeeName !== undefined ? employeeName : doc.employeeName,
           },
+          include: {
+            metadata: true,
+            department: { select: { name: true, code: true } },
+          },
         });
-
-        if (metadata) {
-          for (const [key, value] of Object.entries(metadata)) {
-            await tx.documentMetadata.upsert({
-              where: {
-                id: `${id}-${key}`,
-              },
-              update: { value: String(value) },
-              create: {
-                id: `${id}-${key}`,
-                documentId: id,
-                key,
-                value: String(value),
-                extractedBy: 'MANUAL',
-                isVerified: true,
-              },
-            });
-          }
-        }
 
         await tx.documentAuditLog.create({
           data: {
             documentId: id,
             userId: user.id,
             action: 'METADATA_UPDATED',
-            details: { updatedFields: req.body },
+            details: { updatedFields: req.body, mergedMeta },
           },
         });
 
         return d;
       });
 
-      res.json({ document: updated });
+      res.json({
+        document: updated,
+        message: 'Document category & tags updated successfully.',
+      });
     } catch (error) {
       next(error);
     }

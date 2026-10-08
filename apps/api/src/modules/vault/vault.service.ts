@@ -1,25 +1,153 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
+import { Readable } from 'stream';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
 import { logger } from '../../config/logger.js';
+import { scannerService } from '../scanners/scanner.service.js';
+import { generateDossierDocketPdf } from '../../lib/pdfMergeSplit.js';
 
 interface FailedAttemptTracker {
   attempts: number;
   lockedUntil?: Date;
 }
 
+const VAULT_MASTER_SECRET = process.env.VAULT_ENCRYPTION_SECRET || 'NKB-DCC-HIGH-SECURITY-VAULT-AES256GCM-2026';
+
 export class VaultService {
   private failedAttempts: Map<string, FailedAttemptTracker> = new Map();
   private baseStorageDir: string;
 
   constructor() {
-    this.baseStorageDir = path.resolve(process.cwd(), '.server_object_storage', 'nkb-documents', 'vault');
+    this.baseStorageDir = scannerService.getVaultLocalStoragePath();
     if (!fs.existsSync(this.baseStorageDir)) {
       fs.mkdirSync(this.baseStorageDir, { recursive: true });
     }
   }
+
+  private getActiveVaultLocalDir(): string {
+    const dir = scannerService.getVaultLocalStoragePath();
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  }
+
+  /**
+   * High-Security Compression (GZIP) + Encryption (AES-256-GCM + PBKDF2-SHA512)
+   * Produces a tamper-evident .dccvault binary container saved to Local Storage.
+   */
+  compressAndEncryptToVaultContainer(
+    rawBuffer: Buffer,
+    metadata: {
+      originalFileName: string;
+      title: string;
+      mimeType: string;
+      cloudDocumentId?: string;
+      sha256Hash: string;
+      createdAt: string;
+    },
+    pin?: string
+  ): { vaultBuffer: Buffer; compressedSize: number; encryptedSize: number } {
+    const compressed = zlib.gzipSync(rawBuffer, { level: 9 });
+    const salt = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12);
+    const effectivePassphrase = `${VAULT_MASTER_SECRET}:${pin || 'DEFAULT_VAULT_KEY'}`;
+    const key = crypto.pbkdf2Sync(effectivePassphrase, salt, 100000, 32, 'sha512');
+
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const encryptedPayload = Buffer.concat([cipher.update(compressed), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+
+    const headerObj = {
+      magic: 'DCCVAULT_V2',
+      algorithm: 'GZIP+AES-256-GCM-PBKDF2-SHA512',
+      kdfIterations: 100000,
+      hasCustomPin: Boolean(pin && pin.trim().length > 0),
+      saltHex: salt.toString('hex'),
+      ivHex: iv.toString('hex'),
+      authTagHex: authTag.toString('hex'),
+      originalSizeBytes: rawBuffer.length,
+      compressedSizeBytes: compressed.length,
+      encryptedSizeBytes: encryptedPayload.length,
+      metadata,
+    };
+
+    const headerJsonBuf = Buffer.from(JSON.stringify(headerObj), 'utf-8');
+    const magicBuf = Buffer.from('DCCVAULT1', 'ascii'); // 9 bytes
+    const lenBuf = Buffer.alloc(4);
+    lenBuf.writeUInt32BE(headerJsonBuf.length, 0);
+
+    const vaultBuffer = Buffer.concat([magicBuf, lenBuf, headerJsonBuf, encryptedPayload]);
+    return {
+      vaultBuffer,
+      compressedSize: compressed.length,
+      encryptedSize: vaultBuffer.length,
+    };
+  }
+
+  /**
+   * Zero-Disk Plaintext Decryption + Decompression of a .dccvault container in memory (RAM)
+   */
+  decryptAndDecompressVaultContainer(
+    vaultBuffer: Buffer,
+    pin?: string
+  ): {
+    rawBuffer: Buffer;
+    header: any;
+    metadata: any;
+  } {
+    const magic = vaultBuffer.subarray(0, 9).toString('ascii');
+    if (magic !== 'DCCVAULT1') {
+      // Legacy unencrypted fallback if file was stored before .dccvault container
+      return {
+        rawBuffer: vaultBuffer,
+        header: { algorithm: 'RAW_LEGACY', originalSizeBytes: vaultBuffer.length },
+        metadata: { originalFileName: 'Document.pdf', mimeType: 'application/pdf' },
+      };
+    }
+
+    const headerLen = vaultBuffer.readUInt32BE(9);
+    const headerJsonStr = vaultBuffer.subarray(13, 13 + headerLen).toString('utf-8');
+    const header = JSON.parse(headerJsonStr);
+    const ciphertext = vaultBuffer.subarray(13 + headerLen);
+
+    const salt = Buffer.from(header.saltHex, 'hex');
+    const iv = Buffer.from(header.ivHex, 'hex');
+    const authTag = Buffer.from(header.authTagHex, 'hex');
+
+    // Try with provided PIN first; if not custom-pinned, fallback to default key
+    const candidatePins = pin ? [pin, ''] : [''];
+    let decryptedCompressed: Buffer | null = null;
+
+    for (const candidatePin of candidatePins) {
+      try {
+        const effectivePassphrase = `${VAULT_MASTER_SECRET}:${candidatePin || 'DEFAULT_VAULT_KEY'}`;
+        const key = crypto.pbkdf2Sync(effectivePassphrase, salt, 100000, 32, 'sha512');
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        decryptedCompressed = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        break;
+      } catch {}
+    }
+
+    if (!decryptedCompressed) {
+      throw {
+        statusCode: 401,
+        message: 'Decryption failed: Invalid Vault Security PIN or tampered .dccvault file (AES-256-GCM Auth Tag mismatch).',
+      };
+    }
+
+    const rawBuffer = zlib.gunzipSync(decryptedCompressed);
+    return {
+      rawBuffer,
+      header,
+      metadata: header.metadata || {},
+    };
+  }
+
 
   // --- Rate Limiting / Brute Force Protection ---
   private checkBruteForce(userId: string): void {
@@ -85,7 +213,7 @@ export class VaultService {
     }
   }
 
-  // --- Authorization Status Check ---
+  // --- Authorization Status Check (Strictly Admin & Liaison Only) ---
   async checkUserAuthorization(userId: string): Promise<{
     authorized: boolean;
     vaultRole: 'SUPER_ADMIN' | 'VAULT_MANAGER' | 'VAULT_USER' | null;
@@ -107,9 +235,9 @@ export class VaultService {
       return { authorized: false, vaultRole: null, status: 'INACTIVE_USER', user: null };
     }
 
-    const isDccSuperAdmin = user.userRoles.some(
-      (ur) => ur.role.name === 'SUPER_ADMIN' || ur.role.name === 'Super Admin'
-    );
+    const roleNames = user.userRoles.map((ur) => ur.role.name.toUpperCase());
+    const isDccSuperAdmin = roleNames.includes('SUPER_ADMIN') || roleNames.includes('SUPER ADMIN');
+    const isLiaison = roleNames.includes('VIEWER') || roleNames.includes('LIAISON');
 
     const vaultAuth = await prisma.vaultAuthorization.findUnique({
       where: { userId },
@@ -120,23 +248,25 @@ export class VaultService {
         const effectiveRole = isDccSuperAdmin ? 'SUPER_ADMIN' : (vaultAuth.vaultRole as any);
         return { authorized: true, vaultRole: effectiveRole, status: 'ACTIVE', user };
       } else {
-        // Explicitly revoked
         return { authorized: false, vaultRole: null, status: 'REVOKED', user };
       }
     }
 
-    // If user is DCC SUPER_ADMIN and no explicit record yet, auto-provision active vault record
-    if (isDccSuperAdmin) {
-      const createdAuth = await prisma.vaultAuthorization.create({
+    // Auto-provision active vault record for SUPER_ADMIN (Admin) and VIEWER (Liaison Officer)
+    if (isDccSuperAdmin || isLiaison) {
+      const assignedRole = isDccSuperAdmin ? 'SUPER_ADMIN' : 'VAULT_MANAGER';
+      await prisma.vaultAuthorization.create({
         data: {
           userId: user.id,
-          vaultRole: 'SUPER_ADMIN',
+          vaultRole: assignedRole,
           authorizedById: user.id,
           status: 'ACTIVE',
-          notes: 'Auto-provisioned for System Super Administrator',
+          notes: isDccSuperAdmin
+            ? 'Auto-provisioned for System Super Administrator'
+            : 'Auto-provisioned for Authorized Liaison Officer',
         },
       });
-      return { authorized: true, vaultRole: 'SUPER_ADMIN', status: 'ACTIVE', user };
+      return { authorized: true, vaultRole: assignedRole, status: 'ACTIVE', user };
     }
 
     return { authorized: false, vaultRole: null, status: 'UNAUTHORIZED', user };
@@ -377,34 +507,62 @@ export class VaultService {
     });
   }
 
-  // --- Document Storage & Management ---
+  // --- Document Storage & Management (Compressed + Encrypted .dccvault in Local Storage) ---
   async uploadDocument(params: {
     title: string;
     folder?: string;
     documentType?: string;
     fileBuffer: Buffer;
     fileName: string;
+    cloudDocumentId?: string;
+    vaultPin?: string;
     userId: string;
     vaultRole: string;
     ip?: string;
     userAgent?: string;
   }): Promise<any> {
-    const { title, folder = '/', documentType = 'EXECUTIVE_CONFIDENTIAL', fileBuffer, fileName, userId, vaultRole, ip, userAgent } = params;
+    const {
+      title,
+      folder = '/BIR',
+      documentType = 'EXECUTIVE_CONFIDENTIAL',
+      fileBuffer,
+      fileName,
+      cloudDocumentId,
+      vaultPin,
+      userId,
+      ip,
+      userAgent,
+    } = params;
 
     const docId = crypto.randomUUID();
     const sha256Hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const vaultLocalDir = this.getActiveVaultLocalDir();
 
-    // Secure isolated vault storage directory
-    const docDir = path.join(this.baseStorageDir, docId);
-    if (!fs.existsSync(docDir)) {
-      fs.mkdirSync(docDir, { recursive: true });
-    }
+    const safeFileName = (fileName || 'confidential.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const ext = path.extname(safeFileName).toLowerCase();
+    let mimeType = 'application/pdf';
+    if (ext === '.png') mimeType = 'image/png';
+    else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    else if (ext === '.txt') mimeType = 'text/plain';
 
-    const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = path.join(docDir, safeFileName);
-    fs.writeFileSync(storagePath, fileBuffer);
+    // Compress (GZIP) + Encrypt (AES-256-GCM) before saving to Local Storage
+    const { vaultBuffer, compressedSize, encryptedSize } = this.compressAndEncryptToVaultContainer(
+      fileBuffer,
+      {
+        originalFileName: safeFileName,
+        title: title || safeFileName,
+        mimeType,
+        cloudDocumentId,
+        sha256Hash,
+        createdAt: new Date().toISOString(),
+      },
+      vaultPin
+    );
 
-    // Save in database
+    const vaultFileName = `${docId.slice(0, 8)}_${safeFileName}.dccvault`;
+    const storagePath = path.join(vaultLocalDir, vaultFileName);
+    fs.writeFileSync(storagePath, vaultBuffer);
+
     const document = await prisma.vaultDocument.create({
       data: {
         id: docId,
@@ -414,12 +572,12 @@ export class VaultService {
         fileSizeBytes: BigInt(fileBuffer.length),
         sha256Hash,
         storageKey: storagePath,
+        encryptionAlgorithm: 'GZIP+AES-256-GCM-PBKDF2',
         ownerId: userId,
         status: 'ACTIVE',
       },
     });
 
-    // Create owner permission
     await prisma.vaultDocumentPermission.create({
       data: {
         vaultDocumentId: docId,
@@ -440,7 +598,12 @@ export class VaultService {
       documentTitle: document.title,
       details: {
         fileName: safeFileName,
-        fileSizeBytes: Number(fileBuffer.length),
+        vaultFileName,
+        localStoragePath: storagePath,
+        originalSizeBytes: Number(fileBuffer.length),
+        compressedSizeBytes: compressedSize,
+        encryptedSizeBytes: encryptedSize,
+        cloudDocumentId: cloudDocumentId || null,
         sha256Hash,
         folder: document.folder,
       },
@@ -452,6 +615,214 @@ export class VaultService {
     return {
       ...document,
       fileSizeBytes: Number(document.fileSizeBytes),
+      compressedSizeBytes: compressedSize,
+      encryptedSizeBytes: encryptedSize,
+      localStoragePath: storagePath,
+      vaultFileName,
+    };
+  }
+
+  /**
+   * NEW MECHANIC: Before adding a document to Private Vault, it MUST first exist in Cloud Storage.
+   * Pulls the Cloud Storage document, compresses + encrypts it (GZIP + AES-256-GCM),
+   * and saves it as a .dccvault file into Local Storage (<LocalStorage>/PrivateVault/).
+   */
+  async addFromCloudStorage(params: {
+    cloudDocumentId: string;
+    title?: string;
+    folder?: string;
+    documentType?: string;
+    vaultPin?: string;
+    removeFromCloud?: boolean;
+    userId: string;
+    vaultRole: string;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<any> {
+    const {
+      cloudDocumentId,
+      title,
+      folder = '/BIR',
+      documentType,
+      vaultPin,
+      removeFromCloud = false,
+      userId,
+      vaultRole,
+      ip,
+      userAgent,
+    } = params;
+
+    if (!cloudDocumentId) {
+      throw {
+        statusCode: 400,
+        message: 'Cloud Storage Document ID is required. You must upload the document to Cloud Storage first before adding it to the Private Vault.',
+      };
+    }
+
+    const cloudDoc = await prisma.document.findUnique({
+      where: { id: cloudDocumentId },
+      include: {
+        metadata: true,
+        pages: true,
+        department: true,
+      },
+    });
+
+    if (!cloudDoc || cloudDoc.isPurged) {
+      throw {
+        statusCode: 400,
+        message: 'Security Mechanic Enforced: Document was not found in Cloud Storage. Please upload the document to Cloud Storage first before transferring to the Private Vault.',
+      };
+    }
+
+    // Read physical file from Cloud Storage (or generate official PDF dossier if metadata-only)
+    let rawBuffer: Buffer | null = null;
+    let resolvedFileName = `${(cloudDoc.title || 'Cloud_Document').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+
+    if (cloudDoc.storageKeyPdf && fs.existsSync(cloudDoc.storageKeyPdf)) {
+      rawBuffer = fs.readFileSync(cloudDoc.storageKeyPdf);
+      resolvedFileName = path.basename(cloudDoc.storageKeyPdf);
+    } else if (cloudDoc.pages && cloudDoc.pages.length > 0) {
+      const firstPageKey = cloudDoc.pages[0].storageKey;
+      if (firstPageKey && fs.existsSync(firstPageKey)) {
+        rawBuffer = fs.readFileSync(firstPageKey);
+        resolvedFileName = path.basename(firstPageKey);
+      }
+    }
+
+    if (!rawBuffer) {
+      rawBuffer = await generateDossierDocketPdf({
+        title: cloudDoc.title,
+        referenceNumber: cloudDoc.referenceNumber || cloudDoc.id.slice(0, 8),
+        departmentName: cloudDoc.department?.name || 'Cloud Storage',
+        documentType: cloudDoc.documentType,
+        status: cloudDoc.status,
+        createdAt: cloudDoc.createdAt,
+        fileSizeBytes: Number(cloudDoc.fileSizeBytes || 0),
+        sha256Hash: cloudDoc.sha256Hash,
+      });
+    }
+
+    const folderMeta = cloudDoc.metadata?.find((m) => m.key === 'folder_category')?.value;
+    const effectiveFolder = folder || (folderMeta === 'BIR' ? '/BIR' : '/Company_Documentation');
+
+    const vaultDoc = await this.uploadDocument({
+      title: title || cloudDoc.title,
+      folder: effectiveFolder,
+      documentType: documentType || cloudDoc.documentType || 'EXECUTIVE_CONFIDENTIAL',
+      fileBuffer: rawBuffer,
+      fileName: resolvedFileName,
+      cloudDocumentId: cloudDoc.id,
+      vaultPin,
+      userId,
+      vaultRole,
+      ip,
+      userAgent,
+    });
+
+    // Tag the Cloud Storage document or remove it if requested
+    if (removeFromCloud) {
+      await prisma.document.delete({ where: { id: cloudDoc.id } }).catch(() => {});
+    } else {
+      await prisma.documentMetadata.createMany({
+        data: [
+          { documentId: cloudDoc.id, key: 'in_private_vault', value: 'true' },
+          { documentId: cloudDoc.id, key: 'vault_document_id', value: vaultDoc.id },
+          { documentId: cloudDoc.id, key: 'vault_local_path', value: vaultDoc.localStoragePath },
+        ],
+      }).catch(() => {});
+    }
+
+    return {
+      ...vaultDoc,
+      sourceCloudDocumentId: cloudDoc.id,
+      sourceCloudReference: cloudDoc.referenceNumber,
+    };
+  }
+
+  /**
+   * Decrypts & Decompresses a Local Storage .dccvault file inside the Private Vault Upload/Decrypt Section.
+   * Performs Zero-Disk Plaintext Decryption in RAM and returns the original file for preview/download.
+   */
+  async decryptLocalVaultFile(params: {
+    vaultDocumentId?: string;
+    localFilePath?: string;
+    fileBuffer?: Buffer;
+    fileName?: string;
+    vaultPin?: string;
+    userId: string;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<{
+    decryptedFileName: string;
+    title: string;
+    mimeType: string;
+    originalSizeBytes: number;
+    encryptedSizeBytes: number;
+    algorithm: string;
+    sha256Hash: string;
+    base64Data: string;
+    localStoragePath?: string;
+  }> {
+    const { vaultDocumentId, localFilePath, fileBuffer, fileName, vaultPin, userId, ip, userAgent } = params;
+
+    let targetVaultBuffer: Buffer | null = fileBuffer || null;
+    let sourcePath = localFilePath || fileName || 'Uploaded .dccvault';
+
+    if (!targetVaultBuffer && vaultDocumentId) {
+      const vDoc = await prisma.vaultDocument.findUnique({ where: { id: vaultDocumentId } });
+      if (!vDoc || !fs.existsSync(vDoc.storageKey)) {
+        throw { statusCode: 404, message: 'Encrypted .dccvault file not found in Local Storage.' };
+      }
+      targetVaultBuffer = fs.readFileSync(vDoc.storageKey);
+      sourcePath = vDoc.storageKey;
+    } else if (!targetVaultBuffer && localFilePath) {
+      const candidatePath = path.isAbsolute(localFilePath)
+        ? localFilePath
+        : path.join(this.getActiveVaultLocalDir(), path.basename(localFilePath));
+      if (!fs.existsSync(candidatePath)) {
+        throw { statusCode: 404, message: `Encrypted file not found at Local Storage path: ${candidatePath}` };
+      }
+      targetVaultBuffer = fs.readFileSync(candidatePath);
+      sourcePath = candidatePath;
+    }
+
+    if (!targetVaultBuffer || targetVaultBuffer.length === 0) {
+      throw { statusCode: 400, message: 'No encrypted .dccvault file provided for decryption.' };
+    }
+
+    const { rawBuffer, header, metadata } = this.decryptAndDecompressVaultContainer(targetVaultBuffer, vaultPin);
+    const computedHash = crypto.createHash('sha256').update(rawBuffer).digest('hex');
+
+    const cleanName = (metadata.originalFileName || (fileName ? fileName.replace(/\.dccvault$/i, '') : 'Decrypted_Document.pdf'));
+    const mimeType = metadata.mimeType || (cleanName.toLowerCase().endsWith('.png') ? 'image/png' : cleanName.toLowerCase().endsWith('.jpg') ? 'image/jpeg' : 'application/pdf');
+
+    await this.logAudit({
+      userId,
+      action: 'VAULT_LOCAL_FILE_DECRYPTED',
+      documentTitle: metadata.title || cleanName,
+      details: {
+        sourcePath,
+        algorithm: header.algorithm,
+        originalSizeBytes: rawBuffer.length,
+        encryptedSizeBytes: targetVaultBuffer.length,
+        sha256Hash: computedHash,
+      },
+      result: 'SUCCESS',
+      ipAddress: ip,
+      userAgent,
+    });
+
+    return {
+      decryptedFileName: cleanName,
+      title: metadata.title || cleanName,
+      mimeType,
+      originalSizeBytes: rawBuffer.length,
+      encryptedSizeBytes: targetVaultBuffer.length,
+      algorithm: header.algorithm || 'GZIP+AES-256-GCM-PBKDF2',
+      sha256Hash: computedHash,
+      base64Data: rawBuffer.toString('base64'),
+      localStoragePath: sourcePath,
     };
   }
 
@@ -475,11 +846,8 @@ export class VaultService {
       ];
     }
 
-    // Role-based visibility
-    if (vaultRole === 'SUPER_ADMIN' || vaultRole === 'VAULT_MANAGER') {
-      // Full view
-    } else {
-      // VAULT_USER: only documents they own OR have permission for
+    // Admin (SUPER_ADMIN) and Liaison (VAULT_MANAGER) have full view of Vault documents
+    if (vaultRole !== 'SUPER_ADMIN' && vaultRole !== 'VAULT_MANAGER') {
       where.OR = [
         { ownerId: userId },
         { permissions: { some: { userId, canRead: true } } },
@@ -516,7 +884,14 @@ export class VaultService {
       const canPreview = isSuper || isManager || isOwner || !!userPerm?.canPreview;
       const canDownload = isSuper || isManager || isOwner || !!userPerm?.canDownload;
       const canEdit = isSuper || isManager || isOwner || !!userPerm?.canEdit;
-      const canDelete = isSuper || isOwner || !!userPerm?.canDelete;
+      const canDelete = isSuper || isManager || isOwner || !!userPerm?.canDelete;
+
+      let encryptedDiskSize = Number(doc.fileSizeBytes);
+      try {
+        if (fs.existsSync(doc.storageKey)) {
+          encryptedDiskSize = fs.statSync(doc.storageKey).size;
+        }
+      } catch {}
 
       return {
         id: doc.id,
@@ -524,6 +899,9 @@ export class VaultService {
         folder: doc.folder,
         documentType: doc.documentType,
         fileSizeBytes: Number(doc.fileSizeBytes),
+        encryptedDiskSizeBytes: encryptedDiskSize,
+        localStoragePath: doc.storageKey,
+        isCompressedEncrypted: doc.storageKey.endsWith('.dccvault'),
         sha256Hash: doc.sha256Hash,
         encryptionAlgorithm: doc.encryptionAlgorithm,
         ownerId: doc.ownerId,
@@ -564,7 +942,6 @@ export class VaultService {
       throw { statusCode: 404, message: 'Vault document not found.' };
     }
 
-    // Permission check
     const isSuper = vaultRole === 'SUPER_ADMIN';
     const isManager = vaultRole === 'VAULT_MANAGER';
     const isOwner = doc.ownerId === userId;
@@ -598,12 +975,13 @@ export class VaultService {
     return {
       ...doc,
       fileSizeBytes: Number(doc.fileSizeBytes),
+      localStoragePath: doc.storageKey,
       permissions: {
         canRead: true,
         canPreview: isSuper || isManager || isOwner || !!userPerm?.canPreview,
         canDownload: isSuper || isManager || isOwner || !!userPerm?.canDownload,
         canEdit: isSuper || isManager || isOwner || !!userPerm?.canEdit,
-        canDelete: isSuper || isOwner || !!userPerm?.canDelete,
+        canDelete: isSuper || isManager || isOwner || !!userPerm?.canDelete,
       },
     };
   }
@@ -614,8 +992,10 @@ export class VaultService {
     vaultRole: string,
     type: 'PREVIEW' | 'DOWNLOAD',
     ip?: string,
-    userAgent?: string
-  ): Promise<{ stream: fs.ReadStream; title: string; size: number; contentType: string }> {
+    userAgent?: string,
+    pin?: string,
+    rawEncrypted = false
+  ): Promise<{ stream: Readable; title: string; size: number; contentType: string }> {
     const doc = await prisma.vaultDocument.findUnique({
       where: { id: documentId },
       include: { permissions: true },
@@ -651,15 +1031,27 @@ export class VaultService {
     }
 
     if (!fs.existsSync(doc.storageKey)) {
-      throw { statusCode: 404, message: 'Physical vault file not found on secure storage.' };
+      throw { statusCode: 404, message: 'Physical vault file not found on Local Storage.' };
     }
 
-    const stat = fs.statSync(doc.storageKey);
-    const stream = fs.createReadStream(doc.storageKey);
+    const diskBuffer = fs.readFileSync(doc.storageKey);
 
-    // Determine contentType
-    let contentType = 'application/octet-stream';
-    const ext = path.extname(doc.storageKey).toLowerCase();
+    // If rawEncrypted is requested, stream the raw .dccvault file directly
+    if (rawEncrypted) {
+      return {
+        stream: Readable.from(diskBuffer),
+        title: path.basename(doc.storageKey),
+        size: diskBuffer.length,
+        contentType: 'application/octet-stream',
+      };
+    }
+
+    // Zero-Disk Plaintext Decryption + Decompression in RAM
+    const { rawBuffer, metadata } = this.decryptAndDecompressVaultContainer(diskBuffer, pin);
+
+    let contentType = metadata?.mimeType || 'application/pdf';
+    const cleanFileName = metadata?.originalFileName || path.basename(doc.storageKey || '').replace(/\.dccvault$/i, '') || `${doc.title}.pdf`;
+    const ext = path.extname(cleanFileName).toLowerCase();
     if (ext === '.pdf') contentType = 'application/pdf';
     else if (ext === '.png') contentType = 'image/png';
     else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
@@ -676,9 +1068,9 @@ export class VaultService {
     });
 
     return {
-      stream,
-      title: doc.title,
-      size: stat.size,
+      stream: Readable.from(rawBuffer),
+      title: cleanFileName,
+      size: rawBuffer.length,
       contentType,
     };
   }

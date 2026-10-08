@@ -8,6 +8,31 @@ export const scannerRouter = Router();
 // All scanner endpoints require user authentication and proper permissions
 scannerRouter.use(authenticate);
 
+// Universal Port Discovery & Local Storage Path Management
+scannerRouter.get(
+  '/ports',
+  requirePermission('scanners:manage', 'scan:execute', 'documents:read'),
+  (req, res, next) => scannerController.detectPorts(req, res, next)
+);
+
+scannerRouter.post(
+  '/switch',
+  requirePermission('scanners:manage', 'scan:execute', 'documents:write'),
+  (req, res, next) => scannerController.switchScanner(req, res, next)
+);
+
+scannerRouter.get(
+  '/local-storage',
+  requirePermission('scanners:manage', 'scan:execute', 'documents:read'),
+  (req, res, next) => scannerController.getLocalStorage(req, res, next)
+);
+
+scannerRouter.post(
+  '/local-storage',
+  requirePermission('scanners:manage', 'scan:execute', 'documents:write'),
+  (req, res, next) => scannerController.redirectLocalStorage(req, res, next)
+);
+
 scannerRouter.get(
   '/',
   requirePermission('scanners:manage', 'scan:execute', 'documents:read'),
@@ -31,3 +56,4 @@ scannerRouter.get(
   requirePermission('scanners:manage', 'scan:execute', 'documents:read'),
   (req, res, next) => scannerController.getScannerStatus(req, res, next)
 );
+

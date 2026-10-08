@@ -10,9 +10,11 @@ vaultRouter.get('/status', authenticate, (req, res, next) => vaultController.get
 vaultRouter.post('/unlock', authenticate, (req, res, next) => vaultController.unlock(req, res, next));
 vaultRouter.post('/lock', authenticate, (req, res, next) => vaultController.lock(req, res, next));
 
-// 2. Vault Document Management Endpoints (Require Active Vault Session)
+// 2. Vault Document Management Endpoints (Require Active Vault Session — Admin & Liaison Only)
 vaultRouter.get('/documents', authenticate, requireVaultSession, (req, res, next) => vaultController.listDocuments(req, res, next));
 vaultRouter.post('/documents', authenticate, requireVaultSession, (req, res, next) => vaultController.uploadDocument(req, res, next));
+vaultRouter.post('/from-cloud', authenticate, requireVaultSession, (req, res, next) => vaultController.addFromCloud(req, res, next));
+vaultRouter.post('/decrypt-local', authenticate, requireVaultSession, (req, res, next) => vaultController.decryptLocal(req, res, next));
 vaultRouter.get('/documents/:id', authenticate, requireVaultSession, (req, res, next) => vaultController.getDocument(req, res, next));
 vaultRouter.get('/documents/:id/preview', authenticate, requireVaultSession, (req, res, next) => vaultController.preview(req, res, next));
 vaultRouter.get('/documents/:id/download', authenticate, requireVaultSession, (req, res, next) => vaultController.download(req, res, next));

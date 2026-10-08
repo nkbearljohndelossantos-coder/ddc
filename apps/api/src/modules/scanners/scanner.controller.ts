@@ -42,6 +42,62 @@ export class ScannerController {
       next(error);
     }
   }
+
+  async detectPorts(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await scannerService.detectConnectedScanners();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async switchScanner(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { scannerId, scannerName, portName, driverType } = req.body;
+      if (!scannerId) {
+        res.status(400).json({ success: false, error: 'scannerId is required' });
+        return;
+      }
+      const result = await scannerService.switchActiveScanner({
+        scannerId,
+        scannerName,
+        portName,
+        driverType,
+      });
+      res.json({
+        success: true,
+        message: `Switched active scanner to ${result.activeScanner.scannerName} (${result.activeScanner.portName})`,
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLocalStorage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const info = await scannerService.getLocalStorageInfo();
+      res.json({ success: true, ...info });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async redirectLocalStorage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { newPath } = req.body;
+      const info = await scannerService.redirectLocalStoragePath(newPath);
+      res.json({
+        success: true,
+        message: `Local Storage path redirected to: ${info.localStoragePath}`,
+        ...info,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const scannerController = new ScannerController();
+
