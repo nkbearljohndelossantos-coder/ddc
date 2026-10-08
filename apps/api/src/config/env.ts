@@ -23,9 +23,9 @@ const envSchema = z.object({
 
   // JWT & Agent Auth
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  JWT_EXPIRES_IN: z.string().default('15m'),
+  JWT_EXPIRES_IN: z.string().default('7d'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
   AGENT_API_SECRET: z.string().default('dcc-enterprise-agent-default-secret'),
 
   // Storage

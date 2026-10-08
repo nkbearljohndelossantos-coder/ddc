@@ -4232,22 +4232,30 @@
     // Core Auth State Manager
     const auth = {
       token: sessionStorage.getItem('nkb_dcc_token') || localStorage.getItem('nkb_dcc_token') || null,
+      refreshToken: sessionStorage.getItem('nkb_dcc_refresh_token') || localStorage.getItem('nkb_dcc_refresh_token') || null,
       user: JSON.parse(sessionStorage.getItem('nkb_dcc_user') || localStorage.getItem('nkb_dcc_user') || 'null'),
       
-      setSession(token, user, remember = false) {
+      setSession(token, user, remember = true, refreshToken = null) {
         this.token = token;
         this.user = user;
+        if (refreshToken) this.refreshToken = refreshToken;
         const storage = remember ? localStorage : sessionStorage;
         storage.setItem('nkb_dcc_token', token);
         storage.setItem('nkb_dcc_user', JSON.stringify(user));
+        if (refreshToken) {
+          storage.setItem('nkb_dcc_refresh_token', refreshToken);
+        }
       },
 
       clearSession() {
         this.token = null;
+        this.refreshToken = null;
         this.user = null;
         sessionStorage.removeItem('nkb_dcc_token');
+        sessionStorage.removeItem('nkb_dcc_refresh_token');
         sessionStorage.removeItem('nkb_dcc_user');
         localStorage.removeItem('nkb_dcc_token');
+        localStorage.removeItem('nkb_dcc_refresh_token');
         localStorage.removeItem('nkb_dcc_user');
       },
 
@@ -4332,25 +4340,63 @@
     window.addEventListener('keydown', () => vaultState.recordActivity(), { passive: true });
     window.addEventListener('click', () => vaultState.recordActivity(), { passive: true });
 
-    // Authenticated API Fetch Helper
-    async function apiFetch(endpoint, options = {}) {
-      const headers = new Headers(options.headers || {});
-      headers.set('X-Request-ID', `req-${Date.now()}`);
-      if (auth.token) {
-        headers.set('Authorization', `Bearer ${auth.token}`);
-      }
-      if (vaultState.sessionToken) {
-        headers.set('X-Vault-Session-Token', vaultState.sessionToken);
-      }
-      if (!headers.has('Content-Type') && options.body && typeof options.body === 'string') {
-        headers.set('Content-Type', 'application/json');
-      }
+    let refreshPromise = null;
+    async function trySilentTokenRefresh() {
+      if (!auth.refreshToken) return false;
+      if (refreshPromise) return refreshPromise;
+      refreshPromise = (async () => {
+        try {
+          const r = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: auth.refreshToken })
+          });
+          if (!r.ok) return false;
+          const data = await r.json();
+          if (data.accessToken) {
+            auth.setSession(data.accessToken, auth.user, true, data.refreshToken || auth.refreshToken);
+            return true;
+          }
+          return false;
+        } catch {
+          return false;
+        } finally {
+          refreshPromise = null;
+        }
+      })();
+      return refreshPromise;
+    }
 
-      const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
-      if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/vault/')) {
-        auth.clearSession();
-        checkAuth();
-        throw new Error('Session expired. Please sign in.');
+    // Authenticated API Fetch Helper (with automatic silent refresh on 401)
+    async function apiFetch(endpoint, options = {}) {
+      const buildHeaders = () => {
+        const h = new Headers(options.headers || {});
+        h.set('X-Request-ID', `req-${Date.now()}`);
+        if (auth.token) {
+          h.set('Authorization', `Bearer ${auth.token}`);
+        }
+        if (vaultState.sessionToken) {
+          h.set('X-Vault-Session-Token', vaultState.sessionToken);
+        }
+        if (!h.has('Content-Type') && options.body && typeof options.body === 'string') {
+          h.set('Content-Type', 'application/json');
+        }
+        return h;
+      };
+
+      let res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers: buildHeaders() });
+      const isVaultSessionEndpoint = endpoint.includes('/vault/') && !endpoint.endsWith('/vault/status');
+
+      if (res.status === 401 && !endpoint.includes('/auth/login') && !isVaultSessionEndpoint) {
+        const refreshed = await trySilentTokenRefresh();
+        if (refreshed) {
+          res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers: buildHeaders() });
+        }
+        if (res.status === 401) {
+          auth.clearSession();
+          checkAuth();
+          throw new Error('Session expired. Please sign in.');
+        }
       }
       return res;
     }
@@ -4391,7 +4437,7 @@
           throw new Error(data.message || data.error || 'Invalid email or password');
         }
 
-        auth.setSession(data.accessToken, data.user, true);
+        auth.setSession(data.accessToken, data.user, true, data.refreshToken);
         checkAuth();
       } catch (err) {
         alertBox.innerText = err.message;
@@ -5561,6 +5607,7 @@
 
     // View: Minimalist Cloud Storage Records Hub
     async function renderDocumentsView(container, filterFolder = 'ALL') {
+      if (!auth.isAuthenticated()) return;
       if (filterFolder && filterFolder !== 'ALL') {
         activeMinimalFolderFilter = filterFolder;
       }
@@ -5578,7 +5625,9 @@
         if (storageRes.ok) {
           localInfo = await storageRes.json();
         }
-      } catch {}
+      } catch {
+        if (!auth.isAuthenticated()) return;
+      }
 
       const totalCount = documents.length;
       const birCount = documents.filter(d => getDocFolderCategory(d) === 'BIR').length;

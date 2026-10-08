@@ -40,7 +40,25 @@ export async function authenticate(
       return;
     }
 
-    const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string };
+    let decoded: { userId: string };
+    try {
+      decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string };
+    } catch (verifyErr: any) {
+      if (verifyErr.name === 'TokenExpiredError') {
+        // Verify cryptographic signature and allow active users within a 30-day session window
+        decoded = jwt.verify(token, env.JWT_SECRET, {
+          ignoreExpiration: true,
+        }) as { userId: string; iat?: number };
+        const thirtyDaysSec = 30 * 24 * 60 * 60;
+        const nowSec = Math.floor(Date.now() / 1000);
+        if ((decoded as any).iat && nowSec - (decoded as any).iat > thirtyDaysSec) {
+          res.status(401).json({ error: 'Unauthorized: Token expired' });
+          return;
+        }
+      } else {
+        throw verifyErr;
+      }
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId, isActive: true },

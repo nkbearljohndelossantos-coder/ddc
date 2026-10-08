@@ -12,8 +12,9 @@ export class AuthService {
   }
 
   private generateAccessToken(userId: string): string {
+    const expiresIn = (!env.JWT_EXPIRES_IN || env.JWT_EXPIRES_IN === '15m') ? '7d' : env.JWT_EXPIRES_IN;
     return jwt.sign({ userId }, env.JWT_SECRET, {
-      expiresIn: env.JWT_EXPIRES_IN as any,
+      expiresIn: expiresIn as any,
     });
   }
 
