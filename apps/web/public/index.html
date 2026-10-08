@@ -1259,7 +1259,7 @@
       gap: 0.2rem;
     }
 
-    /* Minimalist Row Action Menu (⋯) */
+    /* Minimalist Row Action Kebab Menu (⋮) */
     .row-actions-wrap {
       display: flex;
       align-items: center;
@@ -1269,7 +1269,7 @@
     }
     .btn-icon-more {
       width: 30px;
-      height: 28px;
+      height: 30px;
       border-radius: 6px;
       border: 1px solid #E2E8F0;
       background: #FFFFFF;
@@ -1278,26 +1278,24 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-weight: 700;
-      font-size: 0.95rem;
-      line-height: 1;
+      transition: all 0.12s ease;
+      padding: 0;
     }
-    .btn-icon-more:hover {
-      background: #F8FAFC;
+    .btn-icon-more:hover,
+    .btn-icon-more.active {
+      background: #F1F5F9;
       color: #0F172A;
       border-color: #CBD5E1;
     }
     .row-dropdown-menu {
-      position: absolute;
-      right: 0;
-      top: 32px;
-      z-index: 90;
+      position: fixed;
+      z-index: 9998;
       background: #FFFFFF;
-      border: 1px solid #E2E8F0;
+      border: 1px solid #CBD5E1;
       border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
-      min-width: 195px;
-      padding: 0.3rem;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+      min-width: 210px;
+      padding: 0.35rem;
       display: none;
       flex-direction: column;
       text-align: left;
@@ -1305,11 +1303,17 @@
     .row-dropdown-menu.open {
       display: flex;
     }
+    .row-dropdown-divider {
+      height: 1px;
+      background: #E2E8F0;
+      margin: 0.25rem 0;
+    }
     .row-dropdown-item {
       border: none;
       background: transparent;
-      padding: 0.42rem 0.65rem;
+      padding: 0.45rem 0.65rem;
       font-size: 0.78rem;
+      font-weight: 500;
       color: #1E293B;
       border-radius: 5px;
       cursor: pointer;
@@ -2864,23 +2868,59 @@
       }
     }
 
-    function toggleRowActionMenu(event, menuId) {
+    function closeAllRowActionMenus() {
+      document.querySelectorAll('.row-dropdown-menu.open').forEach(el => el.classList.remove('open'));
+      document.querySelectorAll('.btn-icon-more.active').forEach(btn => btn.classList.remove('active'));
+    }
+
+    function toggleRowActionMenu(event, docId) {
       if (event) {
         event.stopPropagation();
         event.preventDefault();
       }
       closeInlineTagPopover();
+
+      const resolvedId = docId.startsWith('row-menu-') ? docId : `row-menu-${docId}`;
+      const menu = document.getElementById(resolvedId) || document.getElementById(docId);
+      const triggerBtn = event ? event.currentTarget : null;
+
       document.querySelectorAll('.row-dropdown-menu.open').forEach(el => {
-        if (el.id !== menuId) el.classList.remove('open');
+        if (el !== menu) el.classList.remove('open');
       });
-      const menu = document.getElementById(menuId);
-      if (menu) menu.classList.toggle('open');
+      document.querySelectorAll('.btn-icon-more.active').forEach(btn => {
+        if (btn !== triggerBtn) btn.classList.remove('active');
+      });
+
+      if (!menu) return;
+      const isOpening = !menu.classList.contains('open');
+      if (!isOpening) {
+        menu.classList.remove('open');
+        if (triggerBtn) triggerBtn.classList.remove('active');
+        return;
+      }
+
+      menu.classList.add('open');
+      if (triggerBtn) {
+        triggerBtn.classList.add('active');
+        const rect = triggerBtn.getBoundingClientRect();
+        const menuWidth = 215;
+        const menuHeight = menu.offsetHeight || 220;
+        const left = Math.max(12, Math.min(window.innerWidth - menuWidth - 12, rect.right - menuWidth));
+        const openUpward = (rect.bottom + menuHeight + 12) > window.innerHeight && rect.top > menuHeight;
+        const top = openUpward ? (rect.top - menuHeight - 6) : (rect.bottom + 6);
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+      }
     }
 
     document.addEventListener('click', () => {
       closeInlineTagPopover();
-      document.querySelectorAll('.row-dropdown-menu.open').forEach(el => el.classList.remove('open'));
+      closeAllRowActionMenus();
     });
+
+    window.addEventListener('scroll', () => {
+      closeAllRowActionMenus();
+    }, true);
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -5530,18 +5570,24 @@
           </td>
           <td data-label="Actions">
             <div class="row-actions-wrap">
-              <button class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')">View</button>
-              <button class="btn-icon-more" onclick="toggleRowActionMenu(event, '${d.id}')" title="More actions">⋯</button>
-              <div class="row-dropdown-menu" id="row-menu-${d.id}">
-                <button class="row-dropdown-item" onclick="openInlineTagPopover(event, '${d.id}')">🏷️ Quick Switch Tag</button>
-                <button class="row-dropdown-item" onclick="openEditDocTagModal('${d.id}')">📂 Edit Folder & Custom Tags</button>
-                ${hasFile ? `<a href="${API_BASE}/api/v1/documents/${d.id}/download?token=${auth.token}" class="row-dropdown-item" download>⬇ Download File</a>` : ''}
+              <button type="button" class="btn btn-outline btn-sm" onclick="inspectDocument('${d.id}')">View</button>
+              <button type="button" class="btn-icon-more" onclick="toggleRowActionMenu(event, '${d.id}')" title="More actions" aria-label="More actions">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
+                  <circle cx="12" cy="5" r="1.25" fill="currentColor"></circle>
+                  <circle cx="12" cy="12" r="1.25" fill="currentColor"></circle>
+                  <circle cx="12" cy="19" r="1.25" fill="currentColor"></circle>
+                </svg>
+              </button>
+              <div class="row-dropdown-menu" id="row-menu-${d.id}" onclick="event.stopPropagation()">
+                <button type="button" class="row-dropdown-item" onclick="closeAllRowActionMenus(); openInlineTagPopover(event, '${d.id}')">🏷️ Quick Switch Tag</button>
+                <button type="button" class="row-dropdown-item" onclick="closeAllRowActionMenus(); openEditDocTagModal('${d.id}')">📂 Edit Folder & Custom Tags</button>
+                ${hasFile ? `<a href="${API_BASE}/api/v1/documents/${d.id}/download?token=${auth.token}" class="row-dropdown-item" onclick="closeAllRowActionMenus()" download>⬇ Download File</a>` : ''}
                 <div class="row-dropdown-divider"></div>
-                <button class="row-dropdown-item" onclick="openShareMessagingModal('${d.id}', 'WHATSAPP')">💬 Send via WhatsApp</button>
-                <button class="row-dropdown-item" onclick="openShareMessagingModal('${d.id}', 'TELEGRAM')">✈️ Send via Telegram</button>
-                ${canVault ? `<button class="row-dropdown-item" style="color: #1D4ED8; font-weight: 600;" onclick="openAddCloudToVaultModal('${d.id}')">🔐 Seal to Private Vault</button>` : ''}
+                <button type="button" class="row-dropdown-item" onclick="closeAllRowActionMenus(); openShareMessagingModal('${d.id}', 'WHATSAPP')">💬 Send via WhatsApp</button>
+                <button type="button" class="row-dropdown-item" onclick="closeAllRowActionMenus(); openShareMessagingModal('${d.id}', 'TELEGRAM')">✈️ Send via Telegram</button>
+                ${canVault ? `<button type="button" class="row-dropdown-item" style="color: #1D4ED8; font-weight: 600;" onclick="closeAllRowActionMenus(); openAddCloudToVaultModal('${d.id}')">🔐 Seal to Private Vault</button>` : ''}
                 <div class="row-dropdown-divider"></div>
-                <button class="row-dropdown-item danger" onclick="deleteFolderDirect('${d.id}', '${safeTitle}')">🗑️ Delete Record</button>
+                <button type="button" class="row-dropdown-item danger" onclick="closeAllRowActionMenus(); deleteFolderDirect('${d.id}', '${safeTitle}')">🗑️ Delete Record</button>
               </div>
             </div>
           </td>
