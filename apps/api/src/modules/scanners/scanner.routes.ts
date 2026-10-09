@@ -21,6 +21,13 @@ scannerRouter.post(
   (req, res, next) => scannerController.switchScanner(req, res, next)
 );
 
+// Trigger Physical / Universal Scan & Dual-Save to Local + Cloud Storage
+scannerRouter.post(
+  '/scan',
+  requirePermission('scanners:manage', 'scan:execute', 'documents:write'),
+  (req, res, next) => scannerController.triggerScan(req, res, next)
+);
+
 scannerRouter.get(
   '/local-storage',
   requirePermission('scanners:manage', 'scan:execute', 'documents:read'),

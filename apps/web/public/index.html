@@ -6168,7 +6168,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || data.message || 'Scan failed');
 
-        showToast(`✔ Dual-Save Complete! Saved to Local Storage (${data.localStorage?.localFilePath || 'Scans'}) AND Cloud Storage.`);
+        showToast(`✔ Dual-Save Complete! Saved to Local Storage (${data.localStorage?.localFilePath || data.localStorageSavedPath || 'Scans'}) AND Cloud Storage.`);
         if (titleInput) titleInput.value = '';
         renderScannerLocalView(document.getElementById('page-content'));
       } catch (err) {

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { scannerService } from './scanner.service.js';
+import { documentController } from '../documents/document.controller.js';
 
 export class ScannerController {
   async listScanners(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -93,6 +94,21 @@ export class ScannerController {
         message: `Local Storage path redirected to: ${info.localStoragePath}`,
         ...info,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async triggerScan(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      req.body.usePhysicalHardware = true;
+      if (!req.body.scannerDevice && req.body.scannerId) {
+        req.body.scannerDevice = req.body.scannerId;
+      }
+      if (!req.body.portName && req.body.port) {
+        req.body.portName = req.body.port;
+      }
+      await documentController.create(req, res, next);
     } catch (error) {
       next(error);
     }

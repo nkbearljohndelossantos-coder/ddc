@@ -557,6 +557,9 @@ export class DocumentController {
         document: doc,
         localStorageSavedPath: localSavedPath,
         cloudStorageSavedPath: finalStorageKey,
+        localStorage: {
+          localFilePath: localSavedPath || '',
+        },
         storageTier,
         folderCategory: resolvedFolder,
         message: localSavedPath

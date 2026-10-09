@@ -15,6 +15,9 @@ build/
 *.pem
 *.key
 *.cert
+run_ssh.ps1
+askpass.bat
+_deploy.ps1
 
 # Local databases & temp scan caches
 *.db
