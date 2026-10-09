@@ -565,7 +565,13 @@ converterRouter.get('/windows-uploader-download', (req: Request, res: Response, 
 
     const psWindowPath = path.resolve(process.cwd(), 'agents', 'windows-uploader', 'DccUploadWindow.ps1');
     const cliPath = path.resolve(process.cwd(), 'agents', 'windows-uploader', 'dcc-upload-cli.mjs');
+    const icoPath = path.resolve(process.cwd(), 'scripts', 'dcc.ico');
     const ctxInstallPath = path.resolve(process.cwd(), 'scripts', 'install-context-menu.ps1');
+    const ctxUninstallPath = path.resolve(process.cwd(), 'scripts', 'uninstall-context-menu.ps1');
+    const hotkeyDaemonPath = path.resolve(process.cwd(), 'scripts', 'RMS-HotKey-Daemon.ps1');
+    const launcherPath = path.resolve(process.cwd(), 'scripts', 'dcc-upload-launcher.ps1');
+    const batInstallPath = path.resolve(process.cwd(), 'scripts', 'Install-RMS-ContextMenu-And-HotKey.bat');
+    const batHotkeyPath = path.resolve(process.cwd(), 'scripts', 'Start-RMS-HotKey.bat');
 
     if (fs.existsSync(psWindowPath)) {
       filesToZip.push({ name: 'DccUploadWindow.ps1', content: fs.readFileSync(psWindowPath) });
@@ -573,39 +579,69 @@ converterRouter.get('/windows-uploader-download', (req: Request, res: Response, 
     if (fs.existsSync(cliPath)) {
       filesToZip.push({ name: 'dcc-upload-cli.mjs', content: fs.readFileSync(cliPath) });
     }
+    if (fs.existsSync(icoPath)) {
+      filesToZip.push({ name: 'dcc.ico', content: fs.readFileSync(icoPath) });
+    }
     if (fs.existsSync(ctxInstallPath)) {
       filesToZip.push({ name: 'install-context-menu.ps1', content: fs.readFileSync(ctxInstallPath) });
     }
+    if (fs.existsSync(ctxUninstallPath)) {
+      filesToZip.push({ name: 'uninstall-context-menu.ps1', content: fs.readFileSync(ctxUninstallPath) });
+    }
+    if (fs.existsSync(hotkeyDaemonPath)) {
+      filesToZip.push({ name: 'RMS-HotKey-Daemon.ps1', content: fs.readFileSync(hotkeyDaemonPath) });
+    }
+    if (fs.existsSync(launcherPath)) {
+      filesToZip.push({ name: 'dcc-upload-launcher.ps1', content: fs.readFileSync(launcherPath) });
+    }
+    if (fs.existsSync(batInstallPath)) {
+      filesToZip.push({ name: 'Install-RMS-ContextMenu-And-HotKey.bat', content: fs.readFileSync(batInstallPath) });
+    }
+    if (fs.existsSync(batHotkeyPath)) {
+      filesToZip.push({ name: 'Start-RMS-HotKey.bat', content: fs.readFileSync(batHotkeyPath) });
+    }
 
     const batchLauncher = `@echo off
-title DCC Windows Cloud Uploader - Installer & Launcher
+title Records Management Section - Windows Cloud Uploader
 echo ========================================================
-echo   NKB DCC - WINDOWS CLOUD UPLOADER SETUP
+echo   RECORDS MANAGEMENT SECTION (RMS) - CLOUD UPLOADER v3
 echo   Target Cloud Endpoint: ${serverOrigin}
 echo ========================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0DccUploadWindow.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File "%~dp0DccUploadWindow.ps1"
 pause
 `;
-    filesToZip.push({ name: 'Launch-DCC-Windows-Uploader.bat', content: Buffer.from(batchLauncher, 'utf-8') });
+    filesToZip.push({ name: 'Launch-RMS-Cloud-Uploader.bat', content: Buffer.from(batchLauncher, 'utf-8') });
 
-    const readmeTxt = `NKB RECORDS MANAGEMENT SECTION — WINDOWS CLOUD UPLOADER
-===========================================================
-Cloud Server Endpoint: ${serverOrigin}
-Storage Routing: Windows Uploader -> Cloud Storage (BIR & Company's Documentation)
+    const readmeTxt = `RECORDS MANAGEMENT SECTION (RMS) — RENEWED WINDOWS CLOUD UPLOADER v3.0
+========================================================================
+Target Cloud Endpoint: ${serverOrigin}
+Storage Pipeline: Local Storage (C:\\DCC-LocalStorage or PC) -> Cloud Storage (BIR & Company's Documentation)
 
-HOW TO USE:
-1. Extract this ZIP archive to C:\\DCC\\WindowsUploader
-2. Double-click "Launch-DCC-Windows-Uploader.bat" to open the desktop uploader GUI, OR
-3. Right-click "install-context-menu.ps1" -> "Run with PowerShell" to add "Upload to DCC Cloud Storage" to your Windows Right-Click menu.
-4. Once uploaded to Cloud Storage, Admin and Liaison users can compress & encrypt documents into the Private Vault (.dccvault).
+NEW FEATURES:
+1. RIGHT-CLICK CONTEXT MENU:
+   - Select any file, multiple documents, or folder in Windows Explorer or Local Storage.
+   - Right-click and choose "Upload to Cloud Storage (Records Management Section)".
+   - Or Right-click -> "Send to" -> "Upload to Cloud Storage (RMS)".
+
+2. GLOBAL KEYBOARD SHORTCUT KEY (Ctrl+Shift+U):
+   - Select any documents in Windows Explorer and press Ctrl+Shift+U!
+   - Selected files are immediately sent from Local Storage directly to Cloud Storage.
+
+1-CLICK INSTALLATION:
+1. Double-click "Install-RMS-ContextMenu-And-HotKey.bat" (Run as Administrator or standard user).
+2. The installer automatically registers the Windows Explorer Right-Click context menu,
+   configures the SendTo shortcut, and starts the Ctrl+Shift+U hotkey daemon in the background!
+3. To test immediately:
+   - Go to any local folder (e.g. C:\\DCC-LocalStorage), select a PDF/document, and press Ctrl+Shift+U,
+     OR right-click and choose "Upload to Cloud Storage (Records Management Section)".
 `;
     filesToZip.push({ name: 'README-WINDOWS-UPLOADER.txt', content: Buffer.from(readmeTxt, 'utf-8') });
 
     const zipBuffer = createZipArchive(filesToZip);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Length', zipBuffer.length);
-    res.setHeader('Content-Disposition', 'attachment; filename="DCC-Windows-Cloud-Uploader-Setup.zip"');
+    res.setHeader('Content-Disposition', 'attachment; filename="RMS-Windows-Cloud-Uploader-Setup-v3.zip"');
     res.send(zipBuffer);
   } catch (err) {
     next(err);

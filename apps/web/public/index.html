@@ -2933,6 +2933,10 @@
           navigate('dashboard');
           setTimeout(() => document.getElementById('minimal-search-input')?.focus(), 120);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        openBatchUploadModal();
+        showToast('⌨️ Cloud Uploader (Ctrl+U): Select files from Local Storage to upload into Cloud Storage! (Tip: In Windows Explorer, press Ctrl+Shift+U)', 4500);
       }
     });
 
@@ -5551,7 +5555,7 @@
       const safeTitle = (d.title || 'Document').replace(/'/g, "\\'");
 
       return `
-        <tr data-doc-title="${cleanTitle.toLowerCase()}" data-doc-num="${docNumber.toLowerCase()}" data-doc-dept="${deptName.toLowerCase()}" data-doc-folder="${folderCat}" data-doc-tag="${catTag.toLowerCase()} ${customTags.toLowerCase()}">
+        <tr oncontextmenu="event.preventDefault(); toggleRowActionMenu(event, '${d.id}');" data-doc-title="${cleanTitle.toLowerCase()}" data-doc-num="${docNumber.toLowerCase()}" data-doc-dept="${deptName.toLowerCase()}" data-doc-folder="${folderCat}" data-doc-tag="${catTag.toLowerCase()} ${customTags.toLowerCase()}">
           <td data-label="Document">
             <div style="display: flex; flex-direction: column; gap: 0.15rem;">
               <a href="javascript:void(0)" onclick="inspectDocument('${d.id}')" style="color: var(--text-main); text-decoration: none; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem;">
@@ -6200,21 +6204,27 @@
     }
 
     // ==========================================
-    // VIEW: WINDOWS UPLOADER TAB (With Download Button -> Cloud Storage)
+    // VIEW: WINDOWS UPLOADER TAB (Renewed: Right-Click Menu + Shortcut Key)
     // ==========================================
     async function renderWindowsUploaderView(container) {
       let agentStatus = null;
+      let localStorageInfo = null;
       try {
-        const res = await apiFetch('/api/v1/agents/status');
-        if (res.ok) agentStatus = await res.json();
+        const [aRes, sRes] = await Promise.all([
+          apiFetch('/api/v1/agents/status'),
+          apiFetch('/api/v1/scanners/local-storage')
+        ]);
+        if (aRes.ok) agentStatus = await aRes.json();
+        if (sRes.ok) localStorageInfo = await sRes.json();
       } catch {}
 
+      const localPath = localStorageInfo ? localStorageInfo.localStoragePath : 'C:\\DCC-LocalStorage';
       const agent = agentStatus || {
-        agentName: 'DCC Windows Cloud Uploader',
+        agentName: 'RMS Windows Cloud Uploader v3',
         machineName: 'WORKSTATION-WIN11',
-        version: '2.0.0',
+        version: '3.0.0',
         status: 'ONLINE',
-        watchFolder: 'C:\\DCC\\Incoming'
+        watchFolder: `${localPath}\\Incoming`
       };
 
       const downloadUrl = `${API_BASE}/api/v1/converter/windows-uploader-download?token=${auth.token || ''}`;
@@ -6233,67 +6243,127 @@
               📤 Multi-File Auto-Separate Upload
             </button>
           </div>
-          <a href="${downloadUrl}" download="DCC-Windows-Cloud-Uploader-Setup.zip" class="btn btn-primary btn-sm" style="text-decoration: none;">⬇ Download Windows Uploader</a>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn btn-outline btn-sm" onclick="openBatchUploadModal()">⌨️ Trigger Uploader (Ctrl+U)</button>
+            <a href="${downloadUrl}" download="RMS-Windows-Cloud-Uploader-Setup-v3.zip" class="btn btn-primary btn-sm" style="text-decoration: none;">⬇ Download Windows Uploader v3.0</a>
+          </div>
         </div>
 
-        <div class="card">
+        <!-- Renewal Hero Card -->
+        <div class="card" style="border-top: 3px solid #2563EB;">
           <div class="card-header">
             <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <h3 class="card-heading">💻 Windows Uploader → ☁️ Cloud Storage (Smart OCR Auto-Tag)</h3>
-                <span class="badge badge-primary">DIRECT CLOUD STREAM</span>
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span class="badge" style="background: #2563EB; color: #FFFFFF; font-weight: 700;">RENEWAL v3.0</span>
+                <h3 class="card-heading" style="margin: 0;">Windows Uploader: Right-Click Menu & Shortcut Key (Ctrl+Shift+U)</h3>
+                <span class="badge badge-success">DIRECT CLOUD STREAM</span>
               </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Desktop background service for Windows 10/11 that watches your folder and automatically uploads every document directly into <strong>Cloud Storage</strong>.
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Upload any document directly from <strong>Local Storage</strong> (<code class="mono">${localPath}</code>, Desktop, or PC folders) into <strong>Cloud Storage</strong> using native Windows Right-Click or the global <strong>Ctrl+Shift+U</strong> shortcut.
               </div>
             </div>
-            <a href="${downloadUrl}" download="DCC-Windows-Cloud-Uploader-Setup.zip" class="btn btn-primary" style="background: #2563EB; padding: 0.6rem 1.15rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none;">
+            <a href="${downloadUrl}" download="RMS-Windows-Cloud-Uploader-Setup-v3.zip" class="btn btn-primary" style="background: #2563EB; padding: 0.6rem 1.15rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>⬇ Download Windows Uploader (v2.0 Setup)</span>
+              <span>⬇ Download Windows Uploader v3.0 Setup</span>
             </a>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 1rem;">
-              <div style="font-size: 0.72rem; font-weight: 700; color: #1E40AF; text-transform: uppercase;">Step 1: Download & Run</div>
-              <div style="font-size: 0.9rem; font-weight: 700; color: #1E3A8A; margin-top: 0.25rem;">1-Click Windows Installer</div>
-              <p style="font-size: 0.78rem; color: #1E40AF; margin: 0.35rem 0 0 0;">
-                Click the <strong>Download Windows Uploader</strong> button above to download <code class="mono">DCC-Windows-Cloud-Uploader-Setup.zip</code> with pre-configured Cloud Storage endpoints.
-              </p>
+          <!-- 2 Core Pillars: Right-Click & Shortcut Key -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <!-- Pillar 1: Right-Click Context Menu -->
+            <div style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 8px; padding: 1.15rem; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                  <span style="font-size: 1.25rem;">🖱️</span>
+                  <div style="font-size: 0.95rem; font-weight: 700; color: #1E3A8A;">1. Right-Click Windows Explorer Menu</div>
+                </div>
+                <p style="font-size: 0.79rem; color: #1E40AF; line-height: 1.5; margin: 0.35rem 0 0.75rem 0;">
+                  Select any document, multi-file batch, or folder in Windows Explorer or Local Storage:
+                </p>
+                <div style="background: #FFFFFF; border: 1px solid #93C5FD; border-radius: 6px; padding: 0.65rem 0.85rem; font-size: 0.77rem; color: #0F172A; line-height: 1.5; box-shadow: 0 2px 4px rgba(37,99,235,0.06);">
+                  <div>👉 <strong>Right-Click File</strong> → <span style="color: #2563EB; font-weight: 600;">"Upload to Cloud Storage (Records Management Section)"</span></div>
+                  <div style="margin-top: 0.25rem;">👉 <strong>Or Right-Click</strong> → <strong>Send to</strong> → <span style="color: #2563EB; font-weight: 600;">"Upload to Cloud Storage (RMS)"</span></div>
+                </div>
+              </div>
+              <div style="margin-top: 0.85rem; font-size: 0.72rem; color: #1E40AF;">
+                ✔ Auto-separates each file and applies Smart BIR vs Company's tag
+              </div>
             </div>
-            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 1rem;">
-              <div style="font-size: 0.72rem; font-weight: 700; color: #166534; text-transform: uppercase;">Step 2: Drop Files in Watch Folder</div>
-              <div style="font-size: 0.9rem; font-weight: 700; color: #14532D; margin-top: 0.25rem;">Auto-Separated Cloud Ingestion</div>
-              <p style="font-size: 0.78rem; color: #166534; margin: 0.35rem 0 0 0;">
-                Drop multiple PDFs, images, or Office files into <code class="mono">${agent.watchFolder || 'C:\\DCC\\Incoming'}</code>. Each file is uploaded as a separated Cloud Storage document.
-              </p>
-            </div>
-            <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 1rem;">
-              <div style="font-size: 0.72rem; font-weight: 700; color: #991B1B; text-transform: uppercase;">Step 3: Ready for Private Vault</div>
-              <div style="font-size: 0.9rem; font-weight: 700; color: #7F1D1D; margin-top: 0.25rem;">Cloud Storage → Private Vault</div>
-              <p style="font-size: 0.78rem; color: #991B1B; margin: 0.35rem 0 0 0;">
-                Once uploaded to Cloud Storage by the Windows Uploader, Admin or Liaison can immediately seal the document into the encrypted Private Vault.
-              </p>
+
+            <!-- Pillar 2: Global Shortcut Key -->
+            <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 8px; padding: 1.15rem; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                  <span style="font-size: 1.25rem;">⌨️</span>
+                  <div style="font-size: 0.95rem; font-weight: 700; color: #14532D;">2. Global Keyboard Shortcut Key</div>
+                </div>
+                <p style="font-size: 0.79rem; color: #166534; line-height: 1.5; margin: 0.35rem 0 0.75rem 0;">
+                  Upload selected documents without ever touching the right-click menu:
+                </p>
+                <div style="background: #FFFFFF; border: 1px solid #86EFAC; border-radius: 6px; padding: 0.65rem 0.85rem; font-size: 0.77rem; color: #0F172A; line-height: 1.5; box-shadow: 0 2px 4px rgba(22,101,52,0.06);">
+                  <div>🖥️ <strong>In Windows Explorer:</strong> Select files & press <kbd style="background: #F1F5F9; border: 1px solid #CBD5E1; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; font-family: monospace;">Ctrl + Shift + U</kbd></div>
+                  <div style="margin-top: 0.25rem;">🌐 <strong>In Web Application:</strong> Press <kbd style="background: #F1F5F9; border: 1px solid #CBD5E1; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; font-family: monospace;">Ctrl + U</kbd> anywhere on screen</div>
+                </div>
+              </div>
+              <div style="margin-top: 0.85rem; font-size: 0.72rem; color: #166534;">
+                ✔ Active system-wide via background hotkey daemon (<code class="mono">RMS-HotKey-Daemon.ps1</code>)
+              </div>
             </div>
           </div>
 
-          <div style="background: #F8FAFC; border: 1px solid var(--card-border); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <!-- Quick Setup Instructions & Local Storage Path -->
+          <div style="background: #F8FAFC; border: 1px solid var(--card-border); border-radius: 8px; padding: 1.15rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.84rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">
+              ⚡ 1-Click Installation Guide for Your PC
+            </div>
+            <ol style="margin: 0; padding-left: 1.25rem; font-size: 0.79rem; color: var(--text-secondary); line-height: 1.6;">
+              <li>Click <strong>"Download Windows Uploader v3.0 Setup"</strong> above to download <code class="mono">RMS-Windows-Cloud-Uploader-Setup-v3.zip</code>.</li>
+              <li>Extract the ZIP folder to your PC (e.g. <code class="mono">C:\\RMS-Uploader</code>).</li>
+              <li>Double-click <strong>Install-RMS-ContextMenu-And-HotKey.bat</strong>. It registers the Right-Click menu and starts the <strong>Ctrl+Shift+U</strong> shortcut daemon.</li>
+              <li>Done! Select any file in <code class="mono">${localPath}</code> or Windows Explorer and press <strong>Ctrl+Shift+U</strong> or right-click to upload to Cloud Storage.</li>
+            </ol>
+            <div style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed #CBD5E1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="font-size: 0.74rem; color: var(--text-muted);">
+                Active Local Storage Root: <strong class="mono" style="color: #2563EB;">${localPath}</strong>
+              </div>
+              <div style="display: flex; gap: 0.45rem;">
+                <button class="btn btn-outline btn-sm" onclick="copyPowerShellInstallSnippet()">📋 Copy PowerShell 1-Click Install Command</button>
+                <button class="btn btn-outline btn-sm" onclick="navigate('scanner')">💾 Manage Local Storage Path</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Workstation Connection Status -->
+          <div style="background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
               <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">
-                Connected Workstation: <span class="mono">${agent.machineName}</span> • Destination: <span style="color: #2563EB;">☁️ Cloud Storage (/api/v1/documents/batch)</span>
+                Workstation Service: <span class="mono">${agent.machineName}</span> • Cloud Pipeline: <span style="color: #2563EB; font-weight: 600;">☁️ Direct Cloud Stream (/api/v1/documents/batch)</span>
               </div>
-              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">
-                Watched Folder: <code class="mono">${agent.watchFolder || 'C:\\DCC\\Incoming'}</code> • Auto-Separation: <strong>Enabled</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">
+                HotKey: <span class="badge badge-success">Ctrl+Shift+U Active</span> • Right-Click: <span class="badge badge-primary">Shell Ready</span> • Auto-Separation: <strong>Enabled</strong>
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
-              <button class="btn btn-outline btn-sm" onclick="triggerAgentSync()">🔄 Force Cloud Sync Now</button>
-              <a href="${downloadUrl}" download="DCC-Windows-Cloud-Uploader-Setup.zip" class="btn btn-primary btn-sm">⬇ Download Installer Package</a>
+              <button class="btn btn-outline btn-sm" onclick="triggerAgentSync()">🔄 Ping Cloud Sync</button>
+              <button class="btn btn-primary btn-sm" onclick="openBatchUploadModal()">📤 Test Cloud Upload Now</button>
             </div>
           </div>
         </div>
       `;
     }
+
+    function copyPowerShellInstallSnippet() {
+      const cmd = `irm "${API_BASE}/api/v1/converter/windows-uploader-download?token=${auth.token || ''}" -OutFile "$env:TEMP\\rms-uploader.zip"; Expand-Archive "$env:TEMP\\rms-uploader.zip" -DestinationPath "$HOME\\RMS-Uploader" -Force; & "$HOME\\RMS-Uploader\\Install-RMS-ContextMenu-And-HotKey.bat"`;
+      navigator.clipboard.writeText(cmd).then(() => {
+        showToast('✔ PowerShell 1-click install command copied to clipboard! Paste into PowerShell to install.', 4500);
+      }).catch(() => {
+        prompt('Copy PowerShell install command:', cmd);
+      });
+    }
+
+    // ==========================================
+    // VIEW: CONVERTER & MERGE / DETACH AGENT TAB
+    // ==========================================
 
     // ==========================================
     // VIEW: CONVERTER & MERGE / DETACH AGENT TAB
