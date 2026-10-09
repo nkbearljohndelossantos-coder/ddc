@@ -51,6 +51,33 @@ export function requirePermission(...requiredPermissions: string[]) {
   };
 }
 
+export function requireAnyPermission(...permissions: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized: User not authenticated' });
+      return;
+    }
+
+    // SUPER_ADMIN has universal access
+    if (req.user.roles.includes('SUPER_ADMIN')) {
+      return next();
+    }
+
+    const hasAnyPermission = permissions.some((perm) =>
+      req.user?.permissions.includes(perm)
+    );
+
+    if (!hasAnyPermission) {
+      res.status(403).json({
+        error: `Forbidden: Missing required permission (requires one of: [${permissions.join(', ')}])`,
+      });
+      return;
+    }
+
+    next();
+  };
+}
+
 export function requireDepartmentAccess(req: Request, res: Response, next: NextFunction): void {
   if (!req.user) {
     res.status(401).json({ error: 'Unauthorized: User not authenticated' });
