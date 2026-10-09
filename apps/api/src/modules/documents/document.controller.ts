@@ -380,7 +380,7 @@ export class DocumentController {
       let storageTier = 'CLOUD_STORAGE';
       let uploadedFileBuf: Buffer | null = null;
 
-      // Save fileData if provided (e.g. from Windows Uploader or Manual Upload -> Cloud Storage)
+      // Save fileData if provided (e.g. from Scanner attach, Camera snapshot, Windows Uploader, or Manual Upload -> Cloud Storage)
       if (req.body.fileData) {
         try {
           const uploadDir = path.resolve(process.cwd(), 'uploads', 'documents');
@@ -395,6 +395,18 @@ export class DocumentController {
           const destFile = path.join(uploadDir, `${finalHash.slice(0, 12)}_${safeTitle}`);
           fs.writeFileSync(destFile, fileBuf);
           finalStorageKey = destFile;
+          storageTier = 'CLOUD_STORAGE';
+
+          // Dual-save to Local Storage Scans folder
+          try {
+            const localBase = scannerService.getLocalStoragePath();
+            const localScansDir = path.join(localBase, 'Scans');
+            if (!fs.existsSync(localScansDir)) fs.mkdirSync(localScansDir, { recursive: true });
+            const localSavedFile = path.join(localScansDir, `${finalHash.slice(0, 8)}_${safeTitle}`);
+            fs.writeFileSync(localSavedFile, fileBuf);
+            localSavedPath = localSavedFile;
+            storageTier = 'LOCAL_AND_CLOUD';
+          } catch {}
         } catch (e: any) {
           // ignore or fallback
         }
@@ -415,8 +427,8 @@ export class DocumentController {
       const resolvedTag = smartClassification.categoryTag;
       const resolvedDocType = documentType || smartClassification.documentType;
 
-      // If hardware scan requested (Any connected scanner on USB / WIA / TWAIN / LAN) -> Saves to Local Storage AND Cloud Storage
-      if (usePhysicalHardware || scannerDevice) {
+      // If hardware scan requested WITHOUT attached fileData (Physical hardware feeder acquisition)
+      if ((usePhysicalHardware || scannerDevice) && !req.body.fileData) {
         const scanResult = await scannerService.triggerPhysicalScan({
           title: docTitle,
           duplex: true,

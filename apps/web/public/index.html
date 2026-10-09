@@ -5996,30 +5996,85 @@
               </div>
             </div>
 
-            <!-- Right: Trigger Physical Scan (Saves to Local Storage + Cloud Storage) -->
+            <!-- Right: Trigger Physical / Camera / File Scan (Saves to Local Storage + Cloud Storage) -->
             <div style="background: #FFFFFF; border: 1px solid var(--card-border); border-radius: 8px; padding: 1rem;">
-              <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.65rem;">
-                ⚡ Capture Scan → Local Storage + Cloud Storage
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">
+                  ⚡ Capture Scan → Local Storage + Cloud Storage
+                </div>
+                <span class="badge badge-success" style="font-size: 0.68rem;">Dual-Save Active</span>
               </div>
-              <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 0.55rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.75rem; color: #115E59;">
-                Active Scanner: <strong>${activeScanner.name}</strong> (<strong class="mono">${activeScanner.port}</strong>)
+
+              <!-- Scan Input Method Tabs -->
+              <div style="display: flex; gap: 0.35rem; margin-bottom: 0.75rem; background: #F1F5F9; padding: 0.25rem; border-radius: 6px;">
+                <button type="button" id="tab-scan-file" class="btn btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.35rem; background: #FFFFFF; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.06);" onclick="selectScanCaptureMode('file')">
+                  📁 From PC / Scanner
+                </button>
+                <button type="button" id="tab-scan-camera" class="btn btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.35rem; background: transparent; color: #475569;" onclick="selectScanCaptureMode('camera')">
+                  📷 Camera / WebCam
+                </button>
+                <button type="button" id="tab-scan-hw" class="btn btn-sm" style="flex: 1; font-size: 0.72rem; padding: 0.35rem; background: transparent; color: #475569;" onclick="selectScanCaptureMode('hardware')">
+                  🖨️ USB Feeder (ADF)
+                </button>
               </div>
-              <div class="form-group">
+
+              <!-- Mode 1: File Drop / Select -->
+              <div id="scan-mode-file" style="margin-bottom: 0.75rem;">
+                <div 
+                  style="border: 2px dashed #93C5FD; background: #F0F9FF; border-radius: 6px; padding: 0.85rem; text-align: center; cursor: pointer;"
+                  onclick="document.getElementById('scan-attached-file-input').click()"
+                >
+                  <input type="file" id="scan-attached-file-input" accept=".pdf,image/*" style="display: none;" onchange="handleScanFileAttached(event)" />
+                  <div style="font-size: 0.82rem; font-weight: 600; color: #0369A1;">
+                    📄 Choose or Drop Scanned File (PDF / JPG / PNG)
+                  </div>
+                  <div style="font-size: 0.7rem; color: #0284C7; margin-top: 0.2rem;">
+                    From <code class="mono">C:\DCC-LocalStorage</code> or scanner folder
+                  </div>
+                </div>
+                <div id="scan-attached-file-info" style="display: none; font-size: 0.75rem; color: #047857; margin-top: 0.4rem; background: #ECFDF5; padding: 0.35rem 0.5rem; border-radius: 4px; border: 1px solid #A7F3D0;"></div>
+              </div>
+
+              <!-- Mode 2: Camera Viewfinder -->
+              <div id="scan-mode-camera" style="display: none; margin-bottom: 0.75rem;">
+                <div style="background: #0F172A; border-radius: 6px; padding: 0.5rem; text-align: center;">
+                  <video id="scan-camera-video" autoplay playsinline style="width: 100%; max-height: 200px; border-radius: 4px; object-fit: contain; background: #000;"></video>
+                  <canvas id="scan-camera-canvas" style="display: none;"></canvas>
+                  <div style="display: flex; gap: 0.4rem; justify-content: center; margin-top: 0.4rem;">
+                    <button type="button" id="btn-start-camera" class="btn btn-sm" style="background: #2563EB; color: #fff; font-size: 0.75rem;" onclick="startScanCamera()">📷 Start Camera</button>
+                    <button type="button" id="btn-snap-camera" class="btn btn-sm" style="display: none; background: #16A34A; color: #fff; font-size: 0.75rem;" onclick="snapScanCamera()">📸 Snap Document</button>
+                    <button type="button" id="btn-stop-camera" class="btn btn-sm btn-outline" style="display: none; font-size: 0.75rem; color: #fff; border-color: #64748B;" onclick="stopScanCamera()">🛑 Stop</button>
+                  </div>
+                </div>
+                <img id="scan-camera-preview" style="display: none; width: 100%; max-height: 160px; object-fit: contain; border-radius: 6px; margin-top: 0.4rem; border: 1px solid #E2E8F0;" />
+              </div>
+
+              <!-- Mode 3: Hardware Details -->
+              <div id="scan-mode-hardware" style="display: none; margin-bottom: 0.75rem;">
+                <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 0.55rem 0.75rem; font-size: 0.75rem; color: #115E59;">
+                  Active Scanner: <strong>${activeScanner.name}</strong> (<strong class="mono">${activeScanner.port}</strong>)
+                </div>
+                <div style="font-size: 0.7rem; color: #0F766E; margin-top: 0.3rem;">
+                  Direct hardware feeder scanning requires the local Windows daemon or uploader on your PC.
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0.65rem;">
                 <label class="form-label">Scanned Document Title</label>
                 <input type="text" id="scan-doc-title" oninput="previewSmartScanTag()" class="form-input" placeholder="e.g., BIR Form 2307 - Q4 Scan or Supplier Contract" />
                 <div id="scan-smart-tag-preview" style="font-size: 0.71rem; color: #1D4ED8; margin-top: 0.3rem;">
                   ✨ Smart OCR + AI Rules will auto-detect <strong>#BIR-*</strong> or <strong>#Company-*</strong> tag on scan
                 </div>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
-                <div class="form-group">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 0.75rem;">
+                <div class="form-group" style="margin: 0;">
                   <label class="form-label">Master Folder</label>
                   <select id="scan-folder-category" class="form-select">
                     <option value="COMPANY_DOCS">🏢 Company's Documentation</option>
                     <option value="BIR">🏛️ BIR</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin: 0;">
                   <label class="form-label">Resolution & Color</label>
                   <select id="scan-dpi-select" class="form-select">
                     <option value="300">300 DPI • Color PDF</option>
@@ -6028,8 +6083,8 @@
                   </select>
                 </div>
               </div>
-              <button class="btn btn-primary" id="btn-trigger-scan" style="width: 100%; justify-content: center; background: #0D9488; border-color: #0D9488; padding: 0.6rem;" onclick="triggerUniversalDualScan('${activeScanner.id}', '${activeScanner.port}')">
-                🖨️ Scan Now (Local + Cloud + Smart Auto-Tag)
+              <button class="btn btn-primary" id="btn-trigger-scan" style="width: 100%; justify-content: center; background: #0D9488; border-color: #0D9488; padding: 0.65rem; font-weight: 600;" onclick="triggerUniversalDualScan('${activeScanner.id}', '${activeScanner.port}')">
+                🖨️ Scan & Save to Cloud Storage (Dual-Save Local + Cloud)
               </button>
             </div>
           </div>
@@ -6141,11 +6196,119 @@
       await switchScannerPort(`SCAN-${port.replace(/[^a-zA-Z0-9]/g, '')}`, port, name);
     }
 
+    let currentScanCaptureMode = 'file';
+    let scanAttachedBase64 = null;
+    let scanAttachedFilename = null;
+    let scanCameraStream = null;
+
+    function selectScanCaptureMode(mode) {
+      currentScanCaptureMode = mode;
+      const tabFile = document.getElementById('tab-scan-file');
+      const tabCamera = document.getElementById('tab-scan-camera');
+      const tabHw = document.getElementById('tab-scan-hw');
+      const modeFile = document.getElementById('scan-mode-file');
+      const modeCamera = document.getElementById('scan-mode-camera');
+      const modeHw = document.getElementById('scan-mode-hardware');
+
+      if (tabFile) { tabFile.style.background = mode === 'file' ? '#FFFFFF' : 'transparent'; tabFile.style.fontWeight = mode === 'file' ? '600' : 'normal'; }
+      if (tabCamera) { tabCamera.style.background = mode === 'camera' ? '#FFFFFF' : 'transparent'; tabCamera.style.fontWeight = mode === 'camera' ? '600' : 'normal'; }
+      if (tabHw) { tabHw.style.background = mode === 'hardware' ? '#FFFFFF' : 'transparent'; tabHw.style.fontWeight = mode === 'hardware' ? '600' : 'normal'; }
+
+      if (modeFile) modeFile.style.display = mode === 'file' ? 'block' : 'none';
+      if (modeCamera) modeCamera.style.display = mode === 'camera' ? 'block' : 'none';
+      if (modeHw) modeHw.style.display = mode === 'hardware' ? 'block' : 'none';
+
+      if (mode !== 'camera' && scanCameraStream) {
+        stopScanCamera();
+      }
+    }
+
+    function handleScanFileAttached(e) {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      scanAttachedFilename = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        scanAttachedBase64 = reader.result.split(',')[1];
+        const infoEl = document.getElementById('scan-attached-file-info');
+        if (infoEl) {
+          infoEl.style.display = 'block';
+          infoEl.innerHTML = `✔ Attached: <strong>${escapeHtml(file.name)}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+        }
+        const titleInput = document.getElementById('scan-doc-title');
+        if (titleInput && !titleInput.value.trim()) {
+          titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+          previewSmartScanTag();
+        }
+        showToast(`✔ Scanned file "${file.name}" loaded and ready to scan!`);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function startScanCamera() {
+      try {
+        const video = document.getElementById('scan-camera-video');
+        if (!video) return;
+        scanCameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        video.srcObject = scanCameraStream;
+        const startBtn = document.getElementById('btn-start-camera');
+        const snapBtn = document.getElementById('btn-snap-camera');
+        const stopBtn = document.getElementById('btn-stop-camera');
+        if (startBtn) startBtn.style.display = 'none';
+        if (snapBtn) snapBtn.style.display = 'inline-flex';
+        if (stopBtn) stopBtn.style.display = 'inline-flex';
+      } catch (err) {
+        showToast('Camera error: ' + (err.message || 'Permission denied or camera unavailable'), 4000);
+      }
+    }
+
+    function stopScanCamera() {
+      if (scanCameraStream) {
+        scanCameraStream.getTracks().forEach(t => t.stop());
+        scanCameraStream = null;
+      }
+      const video = document.getElementById('scan-camera-video');
+      if (video) video.srcObject = null;
+      const startBtn = document.getElementById('btn-start-camera');
+      const snapBtn = document.getElementById('btn-snap-camera');
+      const stopBtn = document.getElementById('btn-stop-camera');
+      if (startBtn) startBtn.style.display = 'inline-flex';
+      if (snapBtn) snapBtn.style.display = 'none';
+      if (stopBtn) stopBtn.style.display = 'none';
+    }
+
+    function snapScanCamera() {
+      const video = document.getElementById('scan-camera-video');
+      const canvas = document.getElementById('scan-camera-canvas');
+      const preview = document.getElementById('scan-camera-preview');
+      if (!video || !canvas) return;
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      scanAttachedBase64 = dataUrl.split(',')[1];
+      scanAttachedFilename = `Camera_Scan_${Date.now()}.jpg`;
+      if (preview) {
+        preview.src = dataUrl;
+        preview.style.display = 'block';
+      }
+      stopScanCamera();
+      showToast('✔ Camera snapshot captured! Ready to scan and save.');
+      const titleInput = document.getElementById('scan-doc-title');
+      if (titleInput && !titleInput.value.trim()) {
+        titleInput.value = `Camera Scan - ${new Date().toLocaleTimeString()}`;
+        previewSmartScanTag();
+      }
+    }
+
     async function triggerUniversalDualScan(scannerId, port) {
       const titleInput = document.getElementById('scan-doc-title');
       const folderCat = document.getElementById('scan-folder-category')?.value || 'COMPANY_DOCS';
       const dpi = Number(document.getElementById('scan-dpi-select')?.value || 300);
-      const title = (titleInput?.value || '').trim() || `Scanned Document (${port}) - ${new Date().toLocaleTimeString()}`;
+      const title = (titleInput?.value || '').trim() || (scanAttachedFilename || `Scanned Document (${port}) - ${new Date().toLocaleTimeString()}`);
 
       const btn = document.getElementById('btn-trigger-scan');
       if (btn) {
@@ -6154,19 +6317,28 @@
       }
 
       try {
+        const payload = {
+          scannerId,
+          port,
+          title,
+          folderCategory: folderCat,
+          dpi,
+          colorMode: 'Color',
+          fileData: scanAttachedBase64 || undefined,
+          originalFilename: scanAttachedFilename || undefined
+        };
+
         const res = await apiFetch('/api/v1/scanners/scan', {
           method: 'POST',
-          body: JSON.stringify({
-            scannerId,
-            port,
-            title,
-            folderCategory: folderCat,
-            dpi,
-            colorMode: 'Color'
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || data.message || 'Scan failed');
+
+        // Reset attached file & camera state
+        scanAttachedBase64 = null;
+        scanAttachedFilename = null;
+        stopScanCamera();
 
         showToast(`✔ Dual-Save Complete! Saved to Local Storage (${data.localStorage?.localFilePath || data.localStorageSavedPath || 'Scans'}) AND Cloud Storage.`);
         if (titleInput) titleInput.value = '';
@@ -6176,7 +6348,7 @@
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerText = '🖨️ Scan Now (Save to Local Storage + Cloud Storage)';
+          btn.innerText = '🖨️ Scan & Save to Cloud Storage (Dual-Save Local + Cloud)';
         }
       }
     }
